@@ -1,0 +1,212 @@
+name: CI
+
+# THE MATRIX IS THE POINT.  The 2024 generation of these langs had genuinely
+# good spec suites that nothing ever ran once they left the x-lang tree, and
+# that is the whole of why they rotted -- not the missing digests, not the
+# path literals on their own.  A lang without its suite in its own CI is the
+# last generation with a fresh coat of paint.
+#
+# TWO RELEASES, DELIBERATELY.  A bundle names the x-lang it was built against
+# in lang.xon's (requires-release ...); the matrix runs that one AND whatever
+# main is now.  The pairing row is what turns "the platform moved underneath
+# us" from something discovered years later into a red build on the day it
+# happens.  The `main` leg is allowed to fail -- it is an early warning about
+# the platform, not a verdict on this bundle.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+  # Weekly, because the interesting failure here is one nothing in this
+  # repository triggers: x-lang moving while this bundle sits still.
+  schedule:
+    - cron: '0 6 * * 1'
+
+jobs:
+  # THE MATRIX IS READ, NOT WRITTEN.  The pinned leg is derived from lang.xon
+  # rather than repeated as a literal here -- deriving it removes the second
+  # copy of the fact instead of guarding it, which is the same ruling
+  # tools/check/release-refs.sh applies everywhere else the release is named.
+  prepare:
+    runs-on: ubuntu-latest
+    outputs:
+      legs: ${{ steps.legs.outputs.legs }}
+      declared: ${{ steps.legs.outputs.declared }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: legs
+        name: Read the declared release from lang.xon
+        run: |
+          declared=$(sed -n 's/^(requires-release "\(.*\)")$/\1/p' lang.xon)
+          if [ -z "$declared" ]; then
+            echo "lang.xon declares no (requires-release ...)" >&2
+            exit 1
+          fi
+          echo "declared=$declared" >> "$GITHUB_OUTPUT"
+          echo "legs=[\"$declared\", \"main\"]" >> "$GITHUB_OUTPUT"
+          echo "matrix: $declared and main"
+
+  specs:
+    needs: prepare
+    name: specs @ x-lang ${{ matrix.x-lang }}
+    runs-on: ubuntu-latest
+    continue-on-error: ${{ matrix.x-lang == 'main' }}
+    strategy:
+      fail-fast: false
+      matrix:
+        # BOTH LEGS, AND THEY ANSWER DIFFERENT QUESTIONS.  The pinned leg
+        # proves this bundle still runs on the platform it DECLARES; the main
+        # leg is an early warning that x-lang has moved underneath it, and is
+        # allowed to fail.  The pinned row comes from lang.xon via `prepare`,
+        # so it cannot disagree with the manifest.
+        x-lang: ${{ fromJSON(needs.prepare.outputs.legs) }}
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: x-logo
+
+      - name: Check out x-lang
+        uses: actions/checkout@v4
+        with:
+          repository: jonruttan/x-lang
+          ref: ${{ matrix.x-lang }}
+          path: .x-lang
+
+      # The engine is acquired, not built: x-lang pins one and knows how to
+      # fetch it.  Nothing here reimplements that.
+      - name: Build the platform
+        working-directory: .x-lang
+        run: |
+          make engine      # acquire the pinned engine
+          make             # x-bin at the repo root -- `make engine` does not build it
+          make boot        # the launcher-free amalgams the harness loads
+
+      # ONE SPEC FILE, AND IT IS A HEAVY ONE.  The turtle kernel's resident
+      # heap is 5-7GB (x-lang's @weight 7 row), so this runs alone rather
+      # than beside the other jobs on one runner.  A swapping machine reports
+      # failures that are not there.
+      - name: Run the turtle specs
+        working-directory: x-logo
+        run: X="$GITHUB_WORKSPACE/.x-lang/x.sh" sh tests/spec-runner.sh
+
+      # END TO END, which the specs deliberately are not: an example goes
+      # through the indentation preprocessor, the tokenizer, the infix parser,
+      # the dispatcher and the batch launcher.  x-lang's version of this gate
+      # is what caught the -f discard shipping broken for three months.
+      - name: Run the examples
+        working-directory: x-logo
+        run: X="$GITHUB_WORKSPACE/.x-lang/x.sh" sh tests/examples.sh
+
+  # THE PTY CONTRACT, on both OSes.  ctrl-c cancel, the exit paths, the
+  # execute-once ruling: all isatty-guarded, so every batch-driven suite above
+  # is blind to them.  Its own job because it needs a real terminal and its
+  # own OS matrix because the pty and signal behaviour is where the two
+  # platforms differ.
+  tty:
+    needs: prepare
+    name: tty contract (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: x-logo
+      - name: Check out x-lang
+        uses: actions/checkout@v4
+        with:
+          repository: jonruttan/x-lang
+          ref: ${{ needs.prepare.outputs.declared }}
+          path: .x-lang
+      - name: Install expect
+        run: |
+          if [ "$RUNNER_OS" = "Linux" ]; then
+            sudo apt-get update && sudo apt-get install -y expect
+          else
+            brew list expect >/dev/null 2>&1 || brew install expect
+          fi
+      - name: Build the platform
+        working-directory: .x-lang
+        run: |
+          make engine
+          make
+      - name: Run the tty contract
+        working-directory: x-logo
+        run: X="$GITHUB_WORKSPACE/.x-lang/x.sh" sh tests/tty-runner.sh
+
+  relocatable:
+    # THE RULE THAT ACTUALLY KILLED THE LAST GENERATION, as a gate -- and it
+    # is stricter here than the contract requires.  The contract exempts an app
+    # ENTRY, because an in-tree app self-boots.  A bundle does not: x.sh boots
+    # the dialect lang.xon declares and arms this root before run.x is read, so
+    # ZERO files here need a root-relative literal, run.x included.  A bundle
+    # that grows one is nailed to the directory it was written in, and the
+    # symptom does not appear until someone moves it -- which is to say, never
+    # in the repository where it was developed.
+    name: no path literals at all
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # THE KIT SHIPS WITH THE PLATFORM, so this job needs x-lang present --
+      # a shallow checkout of the release lang.xon declares, not a build.  The
+      # check itself reads lang.xon and greps the tree; it wants the FILE, not
+      # an engine, which is why X_LANG_KIT points straight at the kit rather
+      # than going through `x --share-dir`.
+      - name: Check out the lang kit
+        run: |
+          declared=$(sed -n 's/^(requires-release "\(.*\)")$/\1/p' lang.xon)
+          git clone --depth 1 --branch "$declared" \
+            https://github.com/jonruttan/x-lang.git .x-lang
+
+      - name: The declared versions are named once
+        env:
+          X_LANG_KIT: ${{ github.workspace }}/.x-lang/tools/lang-kit
+        run: sh tools/check/release-refs.sh
+
+      - name: No path literals outside run.x
+        run: |
+          # Match the entry however grep spells its path (./run.x or run.x),
+          # and ignore COMMENTS -- a file may legitimately quote the literal it
+          # no longer uses, which is exactly what this bundle's run.x and
+          # logo/serve.x do when they explain what they were ported off.
+          # EXCLUDE THE PLATFORM CLONE: x-lang's own boot files use
+          # root-relative includes legitimately, and a vendored copy of the
+          # platform is not this bundle.
+          hits=$(grep -rn '(include "[a-zA-Z]' --include='*.x' \
+                 --exclude-dir='.x-lang' . \
+                 | grep -Ev ':[0-9]+:[[:space:]]*;' || true)
+          if [ -n "$hits" ]; then
+            echo "root-relative include (a bundle needs none, not even in run.x):" >&2
+            echo "$hits" >&2
+            exit 1
+          fi
+
+      # %lang-root OR NOTHING.  This bundle is the first that ships DATA --
+      # logo/viewer.html, read at runtime and handed to a browser -- and the
+      # ways of finding it that LOOK fine in a checkout are the ways that
+      # broke it in every installed tree: a bare cwd-relative literal, or a
+      # path joined onto %install-root, which points at the PLATFORM's tree
+      # rather than this one.  The seam row exists so there is a right answer;
+      # this asserts nobody quietly went back to a wrong one.
+      - name: Data paths go through %lang-root
+        run: |
+          hits=$(grep -rn '%install-root' --include='*.x' \
+                 --exclude-dir='.x-lang' . \
+                 | grep -Ev ':[0-9]+:[[:space:]]*;' || true)
+          if [ -n "$hits" ]; then
+            echo "a bundle's data lives under %lang-root, not %install-root:" >&2
+            echo "$hits" >&2
+            exit 1
+          fi
+
+      - name: The generated harness is not committed
+        run: |
+          if [ -e tests/lib/harness.gen.x ]; then
+            echo "tests/lib/harness.gen.x is generated and machine-specific;" >&2
+            echo "it must not be committed (see .gitignore)" >&2
+            exit 1
+          fi

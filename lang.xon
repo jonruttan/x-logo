@@ -1,0 +1,52 @@
+; lang.xon -- what this bundle IS.
+;
+; xon: read with the ordinary reader and never evaluated, like every other
+; manifest in the x-lang world (pin.xon, engine.pin.xon).  A form a reader
+; does not know is a loud error, never a skip -- a manifest that silently
+; ignores half of itself cannot be extended without wondering which readers
+; obeyed which half.
+;
+; FORMAT (one form per line):
+;   (lang "NAME")               the -l name
+;   (dialect NAME)              he | xe | rn -- a REQUIREMENT, not a taste
+;   (requires-release "TAG")    the x-lang this bundle was built against
+;   (requires-lang "NAME" ["V"]) another lang this one is written on top
+;                               of, optionally at an exact version
+;   (entry "FILE")              loaded AFTER the dialect, not instead of it
+
+(lang "logo")
+
+; RADON, and it is not a preference -- it is what the imports say.  Every
+; other row in this file was a decision; this one was read off the code:
+;
+;   x/sys/socket   the viewer is served over TCP (serve.x)
+;   x/sys/file     the bytecode file the viewer polls, and LOAD's filein
+;   x/sys/posix    fork, kill, wait, signal -- main.x runs the server as a
+;                  child and reaps it when the REPL exits
+;
+; Those three are radon opt-ins.  A helium Logo would boot and then die on the
+; first import, which is the failure (dialect ...) exists to turn into a
+; refusal by name before anything runs.  float and the analyser come along
+; either way.
+;
+; TURTLE GRAPHICS THAT CANNOT OPEN A SOCKET is still a language, and a future
+; row could say so -- a headless Logo emitting bytecode to stdout needs none
+; of the three.  That would be a second bundle, not a flag on this one: what
+; the surface MEANS is identical, and (dialect ...) is a requirement rather
+; than a taste precisely so it cannot be negotiated at load time.
+(dialect rn)
+
+; PAIRING, NOT PINNING.  A digest freezes bytes; it says nothing about whether
+; those bytes still run against a platform that moved.  This row is the part
+; that is checkable, and it is compared for EQUALITY, never parsed.
+;
+; v0.9.0 is REQUIRED, and it is the release this bundle was extracted ON.  The
+; reason is one seam row: %lang-root, the bundle's own directory, which does
+; not exist in v0.8.1 or anything earlier.  logo/serve.x hands viewer.html to
+; a browser, and a bundle that ships DATA rather than only modules had no way
+; to find its own tree until that row landed -- see "Data a bundle ships" in
+; x-lang's docs/lang-contract.md.  So this is a floor with teeth: against
+; v0.8.1 the viewer read is unbound at the first request, not degraded.
+(requires-release "v0.9.0")
+
+(entry "run.x")
