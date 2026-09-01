@@ -47,6 +47,6 @@
 ; to find its own tree until that row landed -- see "Data a bundle ships" in
 ; x-lang's docs/lang-contract.md.  So this is a floor with teeth: against
 ; v0.8.1 the viewer read is unbound at the first request, not degraded.
-(requires-release "v0.9.0")
+(requires-release "v0.10.0")
 
 (entry "run.x")
