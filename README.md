@@ -1,6 +1,7 @@
 # x-logo — Logo turtle graphics for x-lang
 
-A Logo interpreter written in x-lang, with a live browser viewer — roughly
+A Logo interpreter written in [x-lang](https://github.com/jonruttan/x-lang), with a
+live browser viewer — roughly
 2,400 lines implementing a second surface language, complete with its own
 tokenizer types, an infix expression parser, an HTTP server and an animated
 SVG turtle. It is the worked demonstration of the claim that whole surface
@@ -354,10 +355,24 @@ omission.** The suite is green. A bundle carrying documented debt needs a
 ratchet so the debt cannot grow quietly; a bundle with none wants the runner's
 own verdict, so that the first new failure is red on the day it lands.
 
-## Reference
+## Background
 
-Based on *Turtle Geometry: The Computer as a Medium for Exploring Mathematics*
-by Harold Abelson and Andrea diSessa (MIT Press, 1981).
+Logo began in 1967 at BBN with Wally Feurzeig, Seymour Papert and Cynthia
+Solomon: Lisp's ideas — lists, words, procedures, recursion — in a language
+children could think in. The turtle arrived a couple of years later, first as
+a floor robot and then on screen, and became the language's signature: geometry
+you learn by *being* the thing that draws it. Papert's *Mindstorms* (1980) is
+the book-length argument for why that matters.
+
+This implementation follows *Turtle Geometry: The Computer as a Medium for
+Exploring Mathematics* by Harold Abelson and Andrea diSessa (MIT Press, 1981)
+— the chapter-1 programs in [`examples/ch1.logo`](examples/ch1.logo) are that
+book's, and the scaled-turtle commands exist because its exercises ask for
+them.
+
+- [Logo Foundation](https://el.media.mit.edu/logo-foundation/) — history, and the language's people
+- [*Computer Science Logo Style*](https://web.archive.org/web/2023/https://people.eecs.berkeley.edu/~bh/logo.html) — Brian Harvey's three volumes (archived; the Berkeley host answers unreliably)
+- [*Turtle Geometry*](https://archive.org/details/mit_press_book_9780262362740) — the book this bundle is an instrument for reading, open access at the Internet Archive
 
 ## Licence
 
