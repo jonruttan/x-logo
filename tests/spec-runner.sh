@@ -61,4 +61,14 @@ SPEC_PATH="${SPEC_PATH:-$BUNDLE/tests/specs}"
 # the move.  Two of these in parallel is a swapping machine, and a swapping
 # machine reports failures that are not there -- x-lang's tools/contract/
 # langs.x has the measurement.  Run it on a quiet one.
+# NO COLLECT AT THE SNIPPET SEAM.  The platform runner grew a per-seam
+# heap-collect (x-lang#568 has the diagnosis, #572 the knob), and with it on,
+# this suite dies wholesale: 69 of 83 red -- the tokenizer specs first, which is
+# every spec in a bundle whose whole point is its own tokenizer types.  With
+# the knob at 0 the suite is exactly its recorded self.  Measured both ways
+# against the #572 head rather than reasoned about; x-python's wrapper made
+# the same call for the same reason, and a runner without the knob (the
+# pinned release) ignores the export.
+export SPEC_SEAM_COLLECT=0
+
 . "$X_ROOT/tests/spec-runner.sh"
