@@ -1,5 +1,7 @@
 # x-logo — Logo turtle graphics for x-lang
 
+<p align="center"><img src="docs/bitwise-banner.svg" alt="x-logo, with Bitwise the owl" width="100%"></p>
+
 A Logo interpreter written in [x-lang](https://github.com/jonruttan/x-lang), with a
 live browser viewer — roughly
 2,400 lines implementing a second surface language, complete with its own
@@ -377,3 +379,5 @@ them.
 ## Licence
 
 MIT No Attribution (MIT-0). See [LICENSE](LICENSE).
+
+<p align="center"><img src="docs/bitwise-mark.svg" alt="Bitwise" width="96"></p>
