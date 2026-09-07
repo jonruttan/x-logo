@@ -63,7 +63,7 @@ described under [File Loading](#file-loading).
 
 ## Requirements
 
-**x-lang v0.12.0 or later**, declared in [`lang.xon`](lang.xon) and enforced by
+**x-lang v0.13.0 or later**, declared in [`lang.xon`](lang.xon) and enforced by
 the release pairing rather than by hope. The floor has teeth: this bundle
 reads `%lang-root` to find `logo/viewer.html`, and that seam row does not
 exist in earlier platforms — against one, the viewer request raises on an
