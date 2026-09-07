@@ -50,4 +50,9 @@
 ; Batch (-f): stdin holds a Logo program, not a session -- and logo-repl's fd
 ; swap would discard it unread, the same bug the dialect entries had (see the
 ; platform's repl/banner.x).  %batch? comes from the seam.
+; The run's own decisions -- the bytecode file, and the viewer server when
+; this is a session rather than a batch -- are made HERE and not by the
+; import, so that a boot from a state image makes them too.  See
+; %logo-start! in logo/main.x.
+(%logo-start!)
 (if %batch? (logo-batch) (logo-repl))
