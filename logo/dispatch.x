@@ -464,7 +464,7 @@
                   (match
                     ((%is-stop? err) ())
                     ((%is-return? err) (rest err))
-                    ((if (atom? err) (str=? (symbol->str err) "STOP") #f) ())
+                    ((Err stop? err) ())
                     (#t (error err))))
                 (logo-process-tokens (%block-contents body))
                 ()))

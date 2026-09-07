@@ -50,6 +50,8 @@ install: ## Install into <share>/langs/logo
 	cp -R $(PAYLOAD) "$(DEST)/"
 	printf '%s\n' '$(LANG_VERSION)' > "$(DEST)/version"
 	@echo "x-logo: installed to $(DEST)"
+	@echo "x-logo: writing the boot image"
+	"$(X)" --image -l logo || true
 	@echo "x-logo: try  x -l logo"
 
 .PHONY: uninstall

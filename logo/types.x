@@ -109,7 +109,17 @@
 ; Logo tokenizer base
 ; ============================================================
 
-(def %logo-base
+; THE BASE IS PROCESS STATE, so this is a BUILDER and not just a build.
+; (Base make) allocates a base on a chain of its own: nothing in the ambient
+; heap can name what lives there, so a state image cannot carry %logo-base or
+; the type handles registered on it.  The image writer nils them in its child
+; (the transient below) and calls this again once the image is loaded (the
+; recache hook), which is the same call that makes them here.  Every type
+; global this sets is therefore set in ONE place -- this function -- and
+; entry.x's doors, which bind prims INTO the base, replay against whatever
+; base this last returned.
+(def %logo-base-make
+  (fn (_)
   ; The RAW base: logo walks the spine directly (the %cell walk below,
   ; entry.x's filein path) and hands it to the raw tok/buf prims per
   ; token, so it holds the raw member; Base statics accept it as-is.
@@ -312,7 +322,10 @@
                   self))
               ())))))
 
-    base))
+    base)))
+
+(def %logo-base (%logo-base-make))
+
 
 ; ============================================================
 ; Block and word accessors
@@ -395,8 +408,28 @@
 (def %cmd-handler (fn (_ entry) (first (rest (rest entry)))))
 
 
+
+; ------------------------------------------------------------
+; The base, across a state image
+; ------------------------------------------------------------
+; Nil in the writer's child (a reference into another base's heap is one the
+; writer, which walks one chain, cannot place), remade after the load.  The
+; type handles go with it: they are registered ON the base and mean nothing
+; without it.
+(set! %image-transients
+  (pair (fn (_)
+          (do (set! %logo-base ())
+              (set! %logo ())
+              (set! %logo-indent ())
+              (set! %logo-block ())
+              (set! %logo-op ())
+              (set! %logo-string ())))
+        %image-transients))
+(set! %image-recache-hooks
+  (pair (fn (_) (set! %logo-base (%logo-base-make))) %image-recache-hooks))
+
 (provide logo/types
-  %logo-base %logo %logo-indent %logo-block %logo-op %logo-string
+  %logo-base %logo-base-make %logo %logo-indent %logo-block %logo-op %logo-string
   %logo-truncated
   %logo-word %logo-word=? %is-block? %block-contents %make-indent-block
   %logo-op-str %is-op? %is-string? %logo-string-val %is-paren?

@@ -35,6 +35,17 @@ make install          # into the x on PATH
 X_LANG_DIR=.. x -l logo    # or skip installing: run the tree in front of you
 ```
 
+**Installing writes a boot image.** `make install` ends with
+`x --image -l logo`, which saves the booted language to `.images/` beside the
+bundle; `x -l logo` loads that instead of re-reading the sources, for as long
+as the image's key still matches the library and the engine. Here that is 2.1
+seconds against 8.6. Two things cannot travel in an image and are remade after
+one loads: the tokenizer base, which `(Base make)` puts on a chain of its own
+(`logo/types.x`), and the doors bound into it (`logo/entry.x`). The viewer
+server and the bytecode file are started by the entry rather than by an import,
+for the same reason — a fork decided at import time would be decided once, in
+the image writer. `x --no-image -l logo` boots from source.
+
 ## Quick Start
 
 ```sh
@@ -52,7 +63,7 @@ described under [File Loading](#file-loading).
 
 ## Requirements
 
-**x-lang v0.9.0 or later**, declared in [`lang.xon`](lang.xon) and enforced by
+**x-lang v0.12.0 or later**, declared in [`lang.xon`](lang.xon) and enforced by
 the release pairing rather than by hope. The floor has teeth: this bundle
 reads `%lang-root` to find `logo/viewer.html`, and that seam row does not
 exist in earlier platforms — against one, the viewer request raises on an

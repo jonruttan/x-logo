@@ -43,12 +43,16 @@
 ; Cancel marker: fresh pair, identity-compared.
 (def %logo-cancel (pair () ()))
 
-; True when err is the STOP atom (the eval poll's ctrl-c raise; the
-; poll CLEARS %sigint-flag before raising, so both channels are tested
-; wherever ctrl-c is classified).
-(def %logo-stop?
-  (fn (_ err)
-    (if (atom? err) (str=? (symbol->str err) "STOP") #f)))
+; True when err is the interrupt (the eval poll's ctrl-c raise; the poll
+; CLEARS %sigint-flag before raising, so both channels are tested wherever
+; ctrl-c is classified).
+;  THE PLATFORM'S PREDICATE, not a copy of it.  This tested `(atom? err)` and
+; read the symbol's name, which was the shape an engine raise had; it is an
+; ERR carrying the code STOP now, so the old test answered false for every
+; real ctrl-c and the mid-entry guard fell through to its "report and exit"
+; branch -- ctrl-c inside an unfinished bracket printed `Error: STOP` and
+; killed the session.  `Err stop?` is total and accepts both spellings.
+(def %logo-stop? (fn (_ err) (Err stop? err)))
 
 (def logo-repl
   (op ()

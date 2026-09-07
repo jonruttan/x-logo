@@ -1,2 +1,6 @@
 tests/lib/
 dist/
+
+# The boot image: `x --image -l logo` (the install above) writes it beside the
+# bundle, and `x -l logo` boots from it while its key still matches.
+.images/

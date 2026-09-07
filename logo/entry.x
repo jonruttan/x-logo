@@ -38,8 +38,8 @@
 ; x_type_buffer_append is bounds-UNCHECKED, and the buffer size caps one
 ; token's unconsumed run.  The module-top def roots the backing string
 ; for the buffer view's lifetime (a buffer is a non-owning view).
-(def %entry-buf-store (%entry-str-make 4096))
-(def %entry-buf (%entry-buf-make %entry-buf-store))
+(def %entry-buf-store ())
+(def %entry-buf ())
 
 ; ------------------------------------------------------------
 ; Doors into %logo-base
@@ -49,18 +49,35 @@
 ; tokenizing type alist is selected by the C p_base argument alone; the
 ; read-args rest slot is vestigial).  Precedent:
 ; tests/x/specs/meta/printer.spec.md.
-(Base bind %logo-base '%entry-door-tok (prim-ref 'tok 'read))
-(Base bind %logo-base '%entry-door-byte (prim-ref 'buf 'read))
-(Base bind %logo-base '%entry-door-buf %entry-buf)
 ; make-instance resolves the TYPE against the calling base's alist, so
 ; a session-side call with a logo type silently answers nil (the
 ; convert-silent-nil shape) -- instance SYNTHESIS goes through the door
 ; too.  Cross-base forms may reference ONLY symbols bound here: symbol
 ; interning is per-base, so a stock name like `lit` in a session-built
 ; form would not resolve inside %logo-base.
-(Base bind %logo-base '%entry-door-mi (prim-ref 'type 'make-instance))
-(Base bind %logo-base '%entry-door-indent %logo-indent)
-(Base bind %logo-base '%entry-door-pair pair)
+; ONE DOOR, REPLAYED.  types.x's base is process state and is remade after a
+; state image loads; a binding into the old base means nothing to the new one,
+; and the stream buffer is a non-owning view whose backing string this process
+; allocated.  So both are made HERE, in a function the load calls once and the
+; image's recache hook calls again -- after types.x's hook, which is the order
+; the hooks were added in.
+(def %logo-doors!
+  (fn (_)
+    (do
+      (set! %entry-buf-store (%entry-str-make 4096))
+      (set! %entry-buf (%entry-buf-make %entry-buf-store))
+      (Base bind %logo-base '%entry-door-tok (prim-ref 'tok 'read))
+      (Base bind %logo-base '%entry-door-byte (prim-ref 'buf 'read))
+      (Base bind %logo-base '%entry-door-buf %entry-buf)
+      (Base bind %logo-base '%entry-door-mi (prim-ref 'type 'make-instance))
+      (Base bind %logo-base '%entry-door-indent %logo-indent)
+      (Base bind %logo-base '%entry-door-pair pair)
+      ())))
+(%logo-doors!)
+(set! %image-transients
+  (pair (fn (_) (do (set! %entry-buf ()) (set! %entry-buf-store ())))
+        %image-transients))
+(set! %image-recache-hooks (pair (fn (_) (%logo-doors!)) %image-recache-hooks))
 
 (def %entry-tok-form (list '%entry-door-tok '%entry-door-buf))
 (def %entry-byte-form (list '%entry-door-byte '%entry-door-buf))
