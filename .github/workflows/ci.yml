@@ -99,6 +99,49 @@ jobs:
         working-directory: x-logo
         run: X="$GITHUB_WORKSPACE/.x-lang/x.sh" sh tests/examples.sh
 
+  # The platform's linter, over this bundle's sources.  It reads every file as
+  # text, including the branches no spec reaches.
+  #
+  # Both legs run, on the same split as `specs`.  The pinned leg skips while
+  # the release lang.xon names carries no kit linter: tests/lint.sh says so on
+  # stderr and exits 0, and the gate goes live when (requires-release ...)
+  # moves to an x that ships one.  The main leg is allowed to fail, as an
+  # early warning that a rule started firing because the platform moved.
+  lint:
+    needs: prepare
+    name: lint @ x-lang ${{ matrix.x-lang }}
+    runs-on: ubuntu-latest
+    continue-on-error: ${{ matrix.x-lang == 'main' }}
+    strategy:
+      fail-fast: false
+      matrix:
+        x-lang: ${{ fromJSON(needs.prepare.outputs.legs) }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: x-logo
+
+      - name: Check out x-lang
+        uses: actions/checkout@v4
+        with:
+          repository: jonruttan/x-lang
+          ref: ${{ matrix.x-lang }}
+          path: .x-lang
+
+      # `make boot` is required: the linter loads the boot amalgam, and its
+      # fallback library opens with a root-relative include that cannot
+      # resolve from this job's working directory.
+      - name: Build the platform
+        working-directory: .x-lang
+        run: |
+          make engine
+          make
+          make boot
+
+      - name: Lint the bundle
+        working-directory: x-logo
+        run: X="$GITHUB_WORKSPACE/.x-lang/x.sh" sh tests/lint.sh
+
   # THE PTY CONTRACT, on both OSes.  ctrl-c cancel, the exit paths, the
   # execute-once ruling: all isatty-guarded, so every batch-driven suite above
   # is blind to them.  Its own job because it needs a real terminal and its

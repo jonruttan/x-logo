@@ -59,6 +59,10 @@ uninstall: ## Remove it again
 	rm -rf "$(DEST)"
 	@echo "x-logo: removed $(DEST)"
 
+.PHONY: lint
+lint: ## Lint the bundle's sources with the platform's linter
+	X="$(X)" sh tests/lint.sh
+
 .PHONY: test
 test: ## Run the spec suite (heavy -- see tests/spec-runner.sh)
 	X="$(X)" sh tests/spec-runner.sh
