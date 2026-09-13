@@ -99,6 +99,58 @@ jobs:
         working-directory: x-logo
         run: X="$GITHUB_WORKSPACE/.x-lang/x.sh" sh tests/examples.sh
 
+  # THE RULES THE BUNDLE NEVER HEARD.  x-lang's `make lint-x` sweeps its own
+  # lib/ and apps/; a lang under languages/ was swept by nothing, so every rule
+  # the linter knows was advice this repository never received.  What it reads
+  # that no suite here can: the arm of a branch no spec takes.
+  #
+  # BOTH LEGS, AND THEY SAY DIFFERENT THINGS -- the same split as `specs`.
+  # The PINNED leg is a skip today and that is the gate working, not missing:
+  # the kit linter is newer than the release lang.xon names, so tests/lint.sh
+  # says so on stderr and exits 0 -- and the day (requires-release ...) names
+  # an x that ships it, the gate is live here with no edit.  Deliberately no
+  # version in that sentence: it would be a second copy of the pin, which
+  # tools/check/release-refs.sh exists to forbid.
+  # The MAIN leg is the live one, and it is
+  # allowed to fail: a linter rule that starts firing because the PLATFORM
+  # moved is exactly the early warning this matrix exists to give.
+  lint:
+    needs: prepare
+    name: lint @ x-lang ${{ matrix.x-lang }}
+    runs-on: ubuntu-latest
+    continue-on-error: ${{ matrix.x-lang == 'main' }}
+    strategy:
+      fail-fast: false
+      matrix:
+        x-lang: ${{ fromJSON(needs.prepare.outputs.legs) }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: x-logo
+
+      - name: Check out x-lang
+        uses: actions/checkout@v4
+        with:
+          repository: jonruttan/x-lang
+          ref: ${{ matrix.x-lang }}
+          path: .x-lang
+
+      # `make boot` IS NOT OPTIONAL HERE, and the reason is easy to miss: the
+      # linter driven from an installed root loads the launcher-free amalgam,
+      # and falls back to lib/x-core.x -- whose opening include is
+      # root-relative -- when there is none.  This job's working directory is
+      # x-logo, not the platform, so that fallback cannot load.
+      - name: Build the platform
+        working-directory: .x-lang
+        run: |
+          make engine
+          make
+          make boot
+
+      - name: Lint the bundle
+        working-directory: x-logo
+        run: X="$GITHUB_WORKSPACE/.x-lang/x.sh" sh tests/lint.sh
+
   # THE PTY CONTRACT, on both OSes.  ctrl-c cancel, the exit paths, the
   # execute-once ruling: all isatty-guarded, so every batch-driven suite above
   # is blind to them.  Its own job because it needs a real terminal and its
