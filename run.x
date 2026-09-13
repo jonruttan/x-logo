@@ -1,6 +1,6 @@
 ; # x-logo -- Logo turtle graphics for x-lang
 ;
-; ## run.x -- THE entry
+; ## run.x -- the entry point
 ;
 ; @description A Logo interpreter with a live browser viewer: its own
 ;   tokenizer types, an infix expression parser, an HTTP server and an
@@ -14,45 +14,29 @@
 ;   x -l logo -f prog.logo    batch -- runs the program, writes the bytecode,
 ;                             starts no server
 ;
-; THIS FILE KNOWS NO PATHS, and the change is worth naming because the file it
-; replaces was three quarters path handling.  As apps/logo/run.x it opened
-; with (include "lib/x-core.x") to self-boot and then derived %logo-app-root
-; from %install-root with a guard, because an in-tree app is loaded by its
-; filename and has to find both the platform and itself.
+; This file contains no path literals and no boot code. x.sh reads lang.xon,
+; boots the dialect, arms this directory with import-path!, defines %lang-root
+; to it, and only then cats this file -- so `import logo/...` resolves and
+; logo/serve.x has an absolute root to join viewer.html onto.
 ;
-; A bundle is loaded by NAME.  x.sh reads lang.xon, boots the dialect declared
-; there, arms this directory with import-path!, defines %lang-root to it, and
-; only then cats this file -- so by the time anything below runs the platform
-; is up, `import logo/...` resolves, and logo/serve.x has an absolute root to
-; join viewer.html onto.  Every line of the old boot was a workaround for `-l`
-; not knowing about bundles.  It does now.
-; ONE IMPORT, AND IT MUST BE AN IMPORT.  logo/main is boot glue -- it forks
-; the viewer server, wires the bytecode hooks, arranges for the child to be
-; reaped -- and it re-exports the language's two launchers so this file names
-; one thing rather than three.
-;
-; NOT a ./-relative include-once, which is how a bundle's modules reach their
-; siblings and is wrong here: x.sh cats THIS file onto the engine's stdin
-; after the dialect, so it has no file directory, and `./logo/main.x` would
-; resolve against whatever directory the user was standing in.  `import` goes
-; through the root x.sh armed, which is the bundle wherever it sits.
+; The one import must be an import, not a ./-relative include-once: logo/main
+; is boot glue (it forks the viewer server, wires the bytecode hooks, reaps the
+; child) and re-exports the two launchers. x.sh cats this file onto stdin, so it
+; has no file directory; `import` goes through the root x.sh armed.
 (import logo/main)
 
 (set! %lang-name "Logo")
 (set! %lang-version logo-version)
 
-; THE LOOP IS OURS, not the launcher's, and it always was: a Logo "unit" is a
-; line of Logo, not an s-expression, so logo-repl reads with the Logo reader
-; and logo-batch consumes the whole of stdin as a program.  x.sh appends its
-; own launcher only when the entry does not end in one, which is why this line
-; is last and nothing structural may follow it.
+; The loop is ours, not the launcher's: a Logo unit is a line of Logo, not an
+; s-expression, so logo-repl reads with the Logo reader and logo-batch consumes
+; the whole of stdin. x.sh appends its own launcher only when the entry does not
+; end in one, which is why this line is last and nothing structural may follow.
 ;
-; Batch (-f): stdin holds a Logo program, not a session -- and logo-repl's fd
-; swap would discard it unread, the same bug the dialect entries had (see the
-; platform's repl/banner.x).  %batch? comes from the seam.
-; The run's own decisions -- the bytecode file, and the viewer server when
-; this is a session rather than a batch -- are made HERE and not by the
-; import, so that a boot from a state image makes them too.  See
+; Batch (-f): stdin holds a Logo program, not a session, and logo-repl's fd swap
+; would discard it unread; %batch? comes from the seam. The run's own decisions
+; -- the bytecode file, and the viewer server for a session -- are made here,
+; not by the import, so a boot from a state image makes them too. See
 ; %logo-start! in logo/main.x.
 (%logo-start!)
 (if %batch? (logo-batch) (logo-repl))

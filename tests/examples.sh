@@ -13,22 +13,16 @@
 #   sh tests/examples.sh            check
 #   UPDATE=1 sh tests/examples.sh   regenerate the sidecars
 #
-# WHY THIS IS NOT THE SPEC SUITE.  The specs exercise the turtle KERNEL
-# through the harness -- no reader, no dispatcher, no entry.  An example is a
-# Logo program, and running one exercises the whole path a user takes: the
-# indentation preprocessor, the tokenizer, the infix parser, the dispatcher
-# and the batch launcher.  x-lang's own gate on this file caught the -f
-# discard shipping broken for three months, and it caught it because nothing
-# else ran the language end to end.
+# This complements the spec suite: the specs exercise the turtle kernel through
+# the harness, while an example runs the whole path a user takes -- the
+# indentation preprocessor, the tokenizer, the infix parser, the dispatcher and
+# the batch launcher.
 #
-# .expect, NOT .out: a global *.out ignore for compiler artifacts silently
-# swallows the sidecars, which demotes every pinned example to status-only in
-# a fresh clone -- a check that quietly stops checking.
-#
-# AN EMPTY SIDECAR IS A REAL PIN.  ch1.logo defines procedures and draws; it
-# prints nothing, and "prints nothing" is exactly what regressed when the
-# batch path started echoing results.  Absent sidecar means status-only, and
-# the run says which it was -- no silent caps.
+# .expect, not .out: a global *.out ignore for compiler artifacts would swallow
+# the sidecars and demote every pinned example to status-only in a fresh clone.
+# An empty sidecar is a real pin: ch1.logo prints nothing, and "prints nothing"
+# is what regressed when the batch path started echoing results. The run says
+# whether a case was pinned or status-only.
 set -u
 
 BUNDLE="$(cd "$(dirname "$0")/.." && pwd)"

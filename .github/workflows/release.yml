@@ -1,23 +1,7 @@
 name: Release
 
-# A TAG PUBLISHES A BUNDLE.  x-lang's Pin bundle fetches a tarball by URL and
-# verifies it against a sha256 the consumer's lang.pin.xon carries, so a
-# release is exactly two artifacts: the tarball, and the digest of it.
-#
-# THE SUITE RUNS FIRST.  A tag on a red tree publishes nothing -- the same
-# ruling x-lang's own release workflow follows.  A bundle whose specs fail is
-# not a release, it is a trap with a digest on it.
-#
-# RED MEANS RED HERE, and that is a statement about this bundle rather than a
-# style.  Three of the six langs carry a tests/contract/known-failures.txt and
-# gate against the failing test NAMES, because they ship documented debt and a
-# bare pass/fail count would make them permanently red.  Logo has none: the
-# turtle suite is 0 failures, and a suite with nothing to excuse wants the
-# runner's own verdict, not a list to compare against.
-#
-# If that ever stops being true, the answer is to fix it or to record it --
-# adding a ratchet file and the gate that reads it is the second of those, and
-# it should be a deliberate act with a reason written beside it.
+# A v* tag publishes a release: the tarball and its sha256, which a consumer's
+# lang.pin.xon verifies. The suite runs first; a red tree publishes nothing.
 
 on:
   push:

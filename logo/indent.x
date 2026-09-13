@@ -1,27 +1,17 @@
 ; indent.x -- Indent-to-blocks pre-processor
 ;
-; Converts indented lines to nested block structures.
-; Flat tokens pass through unchanged; indented tokens are
-; grouped into blocks based on indent level.
+; Converts indented lines to nested block structures. Flat tokens pass through
+; unchanged; indented tokens are grouped into blocks by indent level. The
+; column measurement and the pop/push stack live in x/reader/indent now; what
+; is left here is Logo's own policy -- what a block is and where the tokens go.
 ;
-; #520: THE STACK IS NOT HERE ANY MORE. This file used to own a
-; (indent-level . accumulated-tokens-reversed) stack and a %pop-to that closed
-; every block deeper than the incoming column -- the same algorithm x-sweet
-; owned a second copy of, in a different shape, with different answers at the
-; edges. x/reader/indent holds it now. What is left here is the part that was
-; ever Logo's: what a block IS, and where the tokens go.
+; Two policy answers, stated rather than implied by a loop:
 ;
-; LOGO'S TWO POLICY ANSWERS, STATED RATHER THAN IMPLIED BY A LOOP:
-;
-;   tab stop 1      a tab is one column. Set where the measuring happens, in
-;                   logo/types.x, because that is the reader's business.
-;   mismatch open   a line dedenting to a column no open block sits at OPENS a
-;                   block there. That is exactly what %pop-to did -- pop to the
-;                   first level at or above the column, then push when it did
-;                   not match -- and it is a genuine choice rather than a
-;                   default: Python raises on that input and x-sweet unwinds
-;                   past it. Three surfaces, three answers, and until now none
-;                   of them written down.
+;   tab stop 1      a tab is one column. Set in logo/types.x, where the
+;                   measuring happens.
+;   mismatch open   a line dedenting to a column no open block sits at opens a
+;                   block there -- a genuine choice, where Python raises and
+;                   x-sweet unwinds past it.
 (import logo/types)
 (import x/reader/indent)
 ; Fetch the type prims from the catalog (ns `type` is de-registered, R5).

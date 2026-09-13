@@ -10,12 +10,11 @@
 (import logo/repl)
 (import logo/json)
 
-; THE SURFACE'S VERSION, which is not the bundle's.  %lang-version puts this
-; beside "Logo" on the banner, and it moves when the LANGUAGE does -- a new
-; command, a changed precedence.  What `make install` writes to <dest>/version
-; is a different fact, `git describe` of the repository, and it moves on every
-; commit.  A bundle carrying one number for both would have to choose which of
-; the two questions to answer wrongly.
+; The surface's version, not the bundle's. %lang-version puts this beside
+; "Logo" on the banner and moves when the language does (a new command, a
+; changed precedence). What `make install` writes to <dest>/version is a
+; different fact -- `git describe` of the repository, which moves on every
+; commit.
 (def logo-version "0.1.0")
 
 (provide logo/turtle

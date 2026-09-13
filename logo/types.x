@@ -109,15 +109,12 @@
 ; Logo tokenizer base
 ; ============================================================
 
-; THE BASE IS PROCESS STATE, so this is a BUILDER and not just a build.
-; (Base make) allocates a base on a chain of its own: nothing in the ambient
-; heap can name what lives there, so a state image cannot carry %logo-base or
-; the type handles registered on it.  The image writer nils them in its child
-; (the transient below) and calls this again once the image is loaded (the
-; recache hook), which is the same call that makes them here.  Every type
-; global this sets is therefore set in ONE place -- this function -- and
-; entry.x's doors, which bind prims INTO the base, replay against whatever
-; base this last returned.
+; The base is process state, so this is a builder, not just a build. (Base
+; make) allocates a base on a chain of its own that the ambient heap cannot
+; name, so a state image cannot carry %logo-base or its type handles: the
+; writer nils them in its child (the transient below) and calls this again once
+; the image is loaded (the recache hook), the same call that makes them here.
+; entry.x's doors bind prims into whatever base this last returned.
 (def %logo-base-make
   (fn (_)
   ; The RAW base: logo walks the spine directly (the %cell walk below,
@@ -131,12 +128,11 @@
     (def %cell (%inst cell 'type-alist))
     (def %int-name (%type-of 0))
     (def %float-name (%type-of (Float from 0)))
-    ; Keep only INTEGER and FLOAT from the base.  A LOCAL walker on
-    ; purpose, renamed off the boot %filter it used to shadow (#227): the
-    ; alist walked here lives in the FRESH child base, and type tags are
-    ; per-base -- the canonical %filter's pair?/%as-list type-tests
-    ; misclassify foreign-base objects (verified: routing through it
-    ; kills logo at load).  Raw first/rest access is the contract.
+    ; Keep only INTEGER and FLOAT from the base. A local walker, renamed off the
+    ; boot %filter it shadowed (#227): the alist walked here lives in the
+    ; fresh child base, and type tags are per-base, so the canonical %filter's
+    ; pair?/%as-list type-tests misclassify foreign-base objects. Raw first/rest
+    ; access is the contract.
     (def %logo-type-keep
       (fn (self al)
         (if (null? al) ()
@@ -171,12 +167,10 @@
             (def %rb
               (fn (self acc)
                 (def tok (%token-read buf))
-                ; nil = the stream ended INSIDE the block: truncation,
-                ; not an implicit ] (the old silent close accepted
-                ; truncated files and made a ctrl-c'd read look like a
-                ; well-formed block).  RETURN the marker -- raising
-                ; here would run an op inside x_token_read (banned;
-                ; observed SIGSEGV); the entry layer raises outside.
+                ; nil = the stream ended inside the block: truncation, not an
+                ; implicit ]. Return the marker -- raising inside x_token_read
+                ; is banned (it crashed) -- and the entry layer raises
+                ; outside.
                 (if (null? tok)
                   %logo-truncated
                   (if (eq? tok %logo-block-close)

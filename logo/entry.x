@@ -41,26 +41,18 @@
 (def %entry-buf-store ())
 (def %entry-buf ())
 
-; ------------------------------------------------------------
-; Doors into %logo-base
-; ------------------------------------------------------------
-; The prim OBJECTS are bound into %logo-base's env and invoked there via
-; Base eval, so the C functions run with p_base = %logo-base (the
-; tokenizing type alist is selected by the C p_base argument alone; the
-; read-args rest slot is vestigial).  Precedent:
-; tests/x/specs/meta/printer.spec.md.
-; make-instance resolves the TYPE against the calling base's alist, so
-; a session-side call with a logo type silently answers nil (the
-; convert-silent-nil shape) -- instance SYNTHESIS goes through the door
-; too.  Cross-base forms may reference ONLY symbols bound here: symbol
-; interning is per-base, so a stock name like `lit` in a session-built
-; form would not resolve inside %logo-base.
-; ONE DOOR, REPLAYED.  types.x's base is process state and is remade after a
-; state image loads; a binding into the old base means nothing to the new one,
-; and the stream buffer is a non-owning view whose backing string this process
-; allocated.  So both are made HERE, in a function the load calls once and the
-; image's recache hook calls again -- after types.x's hook, which is the order
-; the hooks were added in.
+; The prim objects are bound into %logo-base's env and invoked there via Base
+; eval, so the C functions run with p_base = %logo-base (the tokenizing type
+; alist is selected by that argument alone). make-instance resolves the type
+; against the calling base's alist, so a session-side call with a logo type
+; answers nil -- instance synthesis goes through the door too. Cross-base forms
+; may reference only symbols bound here: symbols intern per base.
+;
+; One door, replayed: types.x's base is process state and is remade after a
+; state image loads, and the stream buffer is a non-owning view of a string
+; this process allocated. So both are made here, in a function the load calls
+; once and the image's recache hook calls again -- after types.x's hook, the
+; order they were added in.
 (def %logo-doors!
   (fn (_)
     (do
