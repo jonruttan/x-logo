@@ -59,6 +59,14 @@ uninstall: ## Remove it again
 	rm -rf "$(DEST)"
 	@echo "x-logo: removed $(DEST)"
 
+# CHEAP, AND IT READS EVERY FILE THE SUITE NEVER REACHES.  The specs exercise
+# the turtle kernel through its surface; the linter reads run.x and all of
+# logo/ as text, so it sees the arm of a branch no spec takes.  Seconds, not
+# minutes -- run it before the suite, not after.
+.PHONY: lint
+lint: ## Lint the bundle's own sources against the platform's rules
+	X="$(X)" sh tests/lint.sh
+
 .PHONY: test
 test: ## Run the spec suite (heavy -- see tests/spec-runner.sh)
 	X="$(X)" sh tests/spec-runner.sh
