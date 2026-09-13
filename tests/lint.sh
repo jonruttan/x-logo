@@ -64,15 +64,32 @@ cd "$BUNDLE"
 
 BUNDLE="$BUNDLE" X="$X" sh "$KIT/lint.sh" "$@" || {
 	_rc=$?
-	# THE ONE FAILURE THAT IS NOT THIS BUNDLE'S, named so nobody debugs it
-	# twice.  A platform before x-lang#683 computed a group's preload from
-	# the FIRST file in it, so every other file's `; lint-known:` line was
-	# dropped -- and logo/serve.x, ninth of thirteen, declares %lang-root
-	# (a `bundle`-class seam row).  It reports as Undefined on a name the
-	# file plainly declares, which reads as a bundle defect and is not one.
+	# THE TWO FAILURES THAT ARE NOT THIS BUNDLE'S, named so nobody debugs
+	# either of them twice.  Both were found by wiring this gate up, and
+	# both are the platform rather than the tree:
+	#
+	#   Undefined on a name its own file declares with `; lint-known:`.
+	#     A group's preload was computed from its FIRST file only, so every
+	#     other file's declaration was dropped -- and logo/serve.x, ninth of
+	#     thirteen, declares %lang-root (a `bundle`-class seam row).
+	#     x-lang#683.
+	#
+	#   `(no verdict -- engine died mid-group)` on every file at once,
+	#     with `include: cannot open`.  The linter loads the boot amalgam,
+	#     and the probe for it looked only where an INSTALL puts it; driven
+	#     from a CHECKOUT, as a bundle's CI drives it, it fell through to a
+	#     library whose opening include is root-relative and died.
+	#     x-lang#687.
+	#
+	# Neither is reachable from anything in this repository, so the note
+	# says so rather than leaving someone to bisect a tree that is fine.
 	echo >&2
-	echo "x-logo: if the only finding is Undefined on a name its own file" >&2
-	echo "  declares with '; lint-known:', this x predates x-lang#683 --" >&2
-	echo "  the group preload dropped it.  Upgrade x; the tree is fine." >&2
+	echo "x-logo: two lint failures are the PLATFORM, not this bundle:" >&2
+	echo "  * Undefined on a name its own file declares with '; lint-known:'" >&2
+	echo "    -- the group preload dropped it (x-lang#683)" >&2
+	echo "  * '(no verdict -- engine died mid-group)' everywhere, with" >&2
+	echo "    'include: cannot open' -- the linter could not find the boot" >&2
+	echo "    amalgam in a checkout (x-lang#687)" >&2
+	echo "  Both are fixed upstream; upgrade x.  Anything else is ours." >&2
 	exit "$_rc"
 }
