@@ -2,23 +2,16 @@
 ;
 ; Usage:  x -l logo
 ;
-; Starts a server on localhost:8080. Open the URL in your browser.
-; Type Logo commands — the browser updates live.
+; Starts a server on localhost:8080. Open the URL in your browser and type Logo
+; commands; the browser updates live.
 ;
-; BOOT GLUE THAT IS NEVERTHELESS A MODULE, and the "nevertheless" is the
-; interesting part.  What this file is for is its EFFECTS, in order: fork the
-; viewer server, wire the bytecode hooks, arrange for the child to be reaped.
-; That reads like something to `include`, and as an in-tree app it was.
-;
-; A BUNDLE ENTRY HAS NO FILE DIRECTORY.  x.sh cats run.x onto the engine's
-; stdin after the dialect, so a ./-relative include-once in it resolves
-; against the CWD -- wherever the user happened to be -- rather than against
-; the bundle.  `import` is the only addressing that works from there, and
-; `import` needs a (provide ...).  So the module registration below is not a
-; claim that this is a library; it is what makes the entry able to name it.
-;
-; Nothing arms a module root here -- x.sh did that from lang.xon before run.x
-; was read, which is what makes `import logo/...` below resolve.
+; This file is boot glue -- its point is its effects, in order: fork the viewer
+; server, wire the bytecode hooks, arrange for the child to be reaped. It is a
+; module rather than an include because a bundle entry has no file directory
+; (x.sh cats run.x onto stdin after the dialect), so a ./-relative include-once
+; would resolve against the user's cwd; `import` is the only addressing that
+; works, and it needs a (provide ...). Nothing arms a module root here -- x.sh
+; did that from lang.xon before run.x was read.
 (def %bigint ())
 (import x/num/float)
 (import logo/turtle)
@@ -34,19 +27,17 @@
 (def %logo-port 8080)
 (def %server-pid ())
 
-; STARTED BY THE ENTRY, NOT BY THIS IMPORT.  Everything here answers a
-; question only the running process can answer -- is this an interactive
-; session? -- and an import is the wrong place to ask it twice over: the
-; imports are what a state image carries, so a fork decided here would be
-; decided once, in the image writer's batch child, and every later boot from
-; that image would inherit its answer (no server, no exit hook, no URL) with
-; the fork never run.  run.x calls this after the boot, where %batch? is the
-; session's own.  A source boot reaches the same call on the same line.
+; Started by the entry, not by this import. Everything here answers a question
+; only the running process can answer -- is this an interactive session? -- and
+; an import is carried by a state image, so a fork decided here would be decided
+; once, in the image writer's batch child, and inherited by every later boot.
+; run.x calls this after the boot, where %batch? is the session's own; a source
+; boot reaches the same call on the same line.
 (def %logo-start!
   (fn (_)
     (do
-      ; The bytecode file is this run's artifact: emptied per run, in batch
-      ; too, which is why it sits outside the unless.
+      ; The bytecode file is this run's artifact: emptied per run, in batch too,
+      ; which is why it sits outside the unless.
       (%bc-write)
       (unless %batch?
         (set! %server-pid

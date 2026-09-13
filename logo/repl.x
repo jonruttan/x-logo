@@ -43,15 +43,11 @@
 ; Cancel marker: fresh pair, identity-compared.
 (def %logo-cancel (pair () ()))
 
-; True when err is the interrupt (the eval poll's ctrl-c raise; the poll
-; CLEARS %sigint-flag before raising, so both channels are tested wherever
-; ctrl-c is classified).
-;  THE PLATFORM'S PREDICATE, not a copy of it.  This tested `(atom? err)` and
-; read the symbol's name, which was the shape an engine raise had; it is an
-; ERR carrying the code STOP now, so the old test answered false for every
-; real ctrl-c and the mid-entry guard fell through to its "report and exit"
-; branch -- ctrl-c inside an unfinished bracket printed `Error: STOP` and
-; killed the session.  `Err stop?` is total and accepts both spellings.
+; True when err is the interrupt (the eval poll's ctrl-c raise; the poll clears
+; %sigint-flag before raising, so both channels are tested wherever ctrl-c is
+; classified). Uses the platform's `Err stop?` predicate: a ctrl-c is an Err
+; carrying the code STOP, and it is total across both spellings, so the
+; mid-entry guard does not fall through to report-and-exit on a real ctrl-c.
 (def %logo-stop? (fn (_ err) (Err stop? err)))
 
 (def logo-repl
@@ -78,8 +74,8 @@
     (def %entry
       (guard (err
           (if (if (= 1 (%cell-int %sigint-flag)) #t (%logo-stop? err))
-            ; ctrl-c mid-entry: discard the pending entry and the
-            ; partial line, un-poison the latch, fresh prompt.
+            ; ctrl-c mid-entry: discard the pending entry and the partial line,
+            ; un-poison the latch, fresh prompt.
             (do
               (%set-cell-int! %sigint-flag 0)
               (%set-cell-int! (first %lr-fd-cell) %lr-fd)
@@ -133,11 +129,10 @@
         (def line (%read-line))
         (if (null? line) (List reverse acc) (self (pair line acc)))))
     (def content (Str join "\n" (%lines ())))
-    ; Handler body is MULTI-FORM (x_eval_body) -- no %seq wrapper.  The
-    ; old flat 5-arg (%seq ...) ran only its first two forms (%seq is
-    ; BINARY, the primitive `do` is built on): the newline, the exit
-    ; hook, and (Sys exit 1) were silently dropped, so an erroring
-    ; batch exited 0 and orphaned the viewer.  Caught by check-logo-tty.
+    ; Handler body is multi-form (x_eval_body), so no %seq wrapper: %seq is
+    ; binary (the primitive `do` is built on it), so a flat 5-arg (%seq ...)
+    ; would run only its first two forms and silently drop the rest -- here the
+    ; newline, the exit hook and (Sys exit 1). Caught by check-logo-tty.
     (guard (err
         (%stderr "Error: ")
         ; loop.x's formatter, not logo-repl's str/number/symbol triple:

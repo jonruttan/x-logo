@@ -25,9 +25,9 @@
 
 (import x/sys/posix)
 (import x/sys/file)
-; Socket plumbing is homed on the Socket class (#29) -- this app is its
-; first consumer; the Darwin-only constants that used to live here moved
-; there and grew their Linux column.
+; Socket plumbing is homed on the Socket class (#29); this app is its first
+; consumer, and the Darwin-only constants that lived here moved there and grew
+; their Linux column.
 (import x/sys/socket)
 ; Fetch the ptr/ffi prims from the catalog (ns `ptr`/`ffi` are de-registered, R5).
 (def %ptr-call (prim-ref 'ptr 'call))
@@ -137,12 +137,11 @@
   (fn (_ port)
     ; Read the HTML template.
     ;
-    ; THE ONE DATA PATH IN THE BUNDLE, and the only reason %lang-root has a
-    ; seam row at all: every other file here is reached by `import` or a
-    ; ./-relative include-once, neither of which means "the bytes of that
-    ; file".  A cwd-relative literal found the viewer only when cwd happened
-    ; to be the tree root, which is to say never in an installed or pinned
-    ; one -- the defect this read has now been rewritten twice to close.
+    ; This is the one data path in the bundle, and the only reason %lang-root
+    ; has a seam row: every other file here is reached by `import` or a
+    ; ./-relative include-once, neither of which means "the bytes of that file".
+    ; A cwd-relative literal would find the viewer only when cwd is the tree
+    ; root, i.e. not in an installed or pinned bundle.
     (def html-template
       (%read-or-empty (%path-join %lang-root "logo/viewer.html")))
     (if (str=? html-template "")

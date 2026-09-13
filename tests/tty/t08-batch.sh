@@ -23,8 +23,8 @@ if [ "$status" -ne 0 ] || [ -n "$out" ]; then
 fi
 
 tmp="${TMPDIR:-/tmp}/logo-tty-batch-$$.logo"
-# `fd` with no argument raises (an UNKNOWN word would not -- dispatch
-# silently ignores those).
+# `fd` with no argument raises; an unknown word does not, since dispatch
+# silently ignores those.
 printf 'print 1 + 2\nfd\n' > "$tmp"
 err=$("$X" -l logo -f "$tmp" 2>&1 >/dev/null)
 status=$?

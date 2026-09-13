@@ -45,13 +45,10 @@ if ! command -v expect >/dev/null 2>&1; then
 	exit 0
 fi
 
-# THIS WORKING TREE IS THE LANG UNDER TEST, which is the one thing the old
-# in-repo harness got for free and a bundle has to say.  `x -l logo` searches
-# the INSTALLED langs/ by default, so without this the suite would happily
-# test whatever copy was installed last -- green against code that is not the
-# code in front of you, which is the exact shape of the failure this whole
-# repository is a response to.  X_LANG_DIR is the platform's override, and it
-# wants the directory bundles sit IN, not the bundle.
+# This working tree is the lang under test: `x -l logo` searches the installed
+# langs/ by default, so without this the suite would test whatever copy was
+# installed last. X_LANG_DIR is the platform's override, and it wants the
+# directory bundles sit in, not the bundle.
 X_LANG_DIR="$(dirname "$BUNDLE")/"
 export X_LANG_DIR X
 

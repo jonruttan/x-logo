@@ -20,7 +20,7 @@
 
 ; Coercion doors: probe via the non-raising Convert dispatcher and check the
 ; RESULT, so strings keep coercing but an unconvertible token (e.g. a block
-; in a numeric slot) raises here instead of segfaulting in the float FFI.
+; in a numeric slot) raises here instead of crashing in the float FFI.
 (def %as-float
   (fn (_ n)
     (if (Float float? n) n
