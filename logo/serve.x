@@ -151,9 +151,12 @@
       (Str append "<script>window.TURTLE_ENDPOINT='/bc';</script>\n"
            html-template))
     ; Create server socket
+    ;
+    ; The caller announces the address, not this function.  Under `-l logo`
+    ; the server runs in a forked child while the parent holds the terminal
+    ; and prints the prompt, so anything written here lands in the middle of
+    ; the parent's output, after the prompt it raced.
     (def server-fd (Socket tcp-listen port))
-    (display "Turtle server listening on http://localhost:" port "\n"
-             "Press Ctrl+C to stop.\n")
     ; Accept loop
     (def %serve-loop
       (fn (self)
