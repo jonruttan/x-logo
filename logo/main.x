@@ -60,7 +60,10 @@
             ; lifetime (#226).
             (Sys kill %server-pid (Sys sigterm))
             (Sys wait %server-pid)))
-        (display "http://localhost:" %logo-port "\n"))
+        ; The one announcement, from the parent: the child is forked and
+        ; shares this terminal, so a line printed there arrives whenever it
+        ; arrives -- after the prompt, as often as not.
+        (display "viewer: http://localhost:" %logo-port "\n"))
       ())))
 
 ; --- Hooks: append bytecodes, clear file on clearscreen ---
