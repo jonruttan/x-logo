@@ -1,6 +1,13 @@
 ; state.x -- Turtle state and movement primitives
 (import x/num/float)
 
+; The platform values this bundle reads, each through its public door:
+; the type handles convert is asked for, and pi.  logo/math.x and
+; logo/tstate.x read %logo-pi too.
+(def %logo-int-type (Type named INTEGER))
+(def %logo-float-type (Type named FLOAT))
+(def %logo-pi (Float pi))
+
 ; ============================================================
 ; State
 ; ============================================================
@@ -15,7 +22,7 @@
 
 (def %deg->rad
   (fn (_ deg)
-    (Float / (Float * (if (Float float? deg) deg (Float from deg)) %pi)
+    (Float / (Float * (if (Float float? deg) deg (Float from deg)) %logo-pi)
         (Float from 180))))
 
 ; Coercion doors: probe via the non-raising Convert dispatcher and check the
@@ -24,7 +31,7 @@
 (def %as-float
   (fn (_ n)
     (if (Float float? n) n
-      (let ((f (Convert to n %float)))
+      (let ((f (Convert to n %logo-float-type)))
         (if (Float float? f) f
           (Err raise 'type "Logo: expected a number" n))))))
 
@@ -33,7 +40,7 @@
     (match
       ((Float float? n) (Float ->int n))
       ((Float integer? n) n)
-      (#t (let ((k (Convert to n %int)))
+      (#t (let ((k (Convert to n %logo-int-type)))
             (if (Float integer? k) k
               (Err raise 'type "Logo: expected a number" n)))))))
 

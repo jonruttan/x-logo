@@ -63,11 +63,11 @@ described under [File Loading](#file-loading).
 
 ## Requirements
 
-**x-lang v0.13.0 or later**, declared in [`lang.xon`](lang.xon) and enforced by
+**x-lang v0.15.0 or later**, declared in [`lang.xon`](lang.xon) and enforced by
 the release pairing rather than by hope. The floor has teeth: this bundle
-reads `%lang-root` to find `logo/viewer.html`, and that seam row does not
-exist in earlier platforms — against one, the viewer request raises on an
-unbound symbol rather than degrading.
+fetches the platform's type handles through `(Type named ...)`, and that door
+does not exist in earlier platforms — against one, the bundle raises at load
+rather than degrading.
 
 **radon**, and that is read off the imports rather than chosen: `x/sys/socket`
 serves the viewer, `x/sys/file` backs the bytecode stream and `LOAD`, and
