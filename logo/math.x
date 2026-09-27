@@ -9,10 +9,10 @@
 ; ============================================================
 
 (def %deg->rad
-  (fn (_ deg) (Float / (Float * (%as-float deg) %pi) (Float from 180))))
+  (fn (_ deg) (Float / (Float * (%as-float deg) %logo-pi) (Float from 180))))
 
 (def %rad->deg
-  (fn (_ rad) (Float / (Float * rad (Float from 180)) %pi)))
+  (fn (_ rad) (Float / (Float * rad (Float from 180)) %logo-pi)))
 
 ; ============================================================
 ; LFSR random number generator (pure x-lang, no C dependency)
@@ -60,7 +60,7 @@
 
 ; Constants as variables
 (set! %logo-vars
-  (pair (pair "PI" %pi) %logo-vars))
+  (pair (pair "PI" %logo-pi) %logo-vars))
 
 (provide logo/math
   %logo-rand %lfsr-state)

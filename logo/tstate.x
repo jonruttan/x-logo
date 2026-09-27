@@ -45,7 +45,7 @@
     (def dx (Float - (%as-float px) %turtle-x))
     (def dy (Float - %turtle-y (%as-float py)))
     (def rad (Float atan2 dx dy))
-    (Float / (Float * rad (Float from 180)) %pi)))
+    (Float / (Float * rad (Float from 180)) %logo-pi)))
 
 ; TURTLE.STATE: return current state as list
 (def turtle-state
