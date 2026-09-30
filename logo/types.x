@@ -40,7 +40,7 @@
 ; reader; on read-str paths it lands in the token list, where dispatch
 ; skips it like any wordless token (no worse than the old silent close).
 (def %logo-truncated (pair 'logo-truncated ()))
-(def %logo-paren-tag 'logo-paren)
+(def %logo-paren-label 'logo-paren)
 
 (def %logo-alpha?
   (fn (_ chr)
@@ -119,7 +119,7 @@
   (fn (_)
   ; The RAW base: logo walks the spine directly (the %cell walk below,
   ; entry.x's filein path) and hands it to the raw tok/buf prims per
-  ; token, so it holds the raw member; Base statics accept it as-is.
+  ; token, so it holds the raw field; Base statics accept it as-is.
   (let ((%inst (Base make)))
     (def base (%inst raw))
     ; The type-alist CELL by its declared route, not by a layout walk: the
@@ -130,7 +130,7 @@
     (def %float-name (%type-of (Float from 0)))
     ; Keep only INTEGER and FLOAT from the base. A local walker, renamed off the
     ; boot %filter it shadowed (#227): the alist walked here lives in the
-    ; fresh child base, and type tags are per-base, so the canonical %filter's
+    ; fresh child base, and type labels are per-base, so the canonical %filter's
     ; pair?/%as-list type-tests misclassify foreign-base objects. Raw first/rest
     ; access is the contract.
     (def %logo-type-keep
@@ -274,13 +274,13 @@
       (list
         (pair 'analyse
           (Analyser make-char-state 40 %tok-accept ()))
-        (pair 'read (fn (_ . args) (pair %logo-paren-tag "(")))))
+        (pair 'read (fn (_ . args) (pair %logo-paren-label "(")))))
 
     (Base make-type base "LOGO-PAREN-CLOSE"
       (list
         (pair 'analyse
           (Analyser make-char-state 41 %tok-accept ()))
-        (pair 'read (fn (_ . args) (pair %logo-paren-tag ")")))))
+        (pair 'read (fn (_ . args) (pair %logo-paren-label ")")))))
 
     ; LOGO-STRING: "..."
     (def %string-body
@@ -325,13 +325,13 @@
 ; Block and word accessors
 ; ============================================================
 
-(def %indent-block-tag (pair 'indent-block ()))
+(def %indent-block-label (pair 'indent-block ()))
 
 (def %is-block?
   (fn (_ tok)
     (match
       ((%type? tok %logo-block) #t)
-      ((pair? tok) (eq? (first tok) %indent-block-tag))
+      ((pair? tok) (eq? (first tok) %indent-block-label))
       (#t #f))))
 
 (def %block-contents
@@ -342,7 +342,7 @@
 
 (def %make-indent-block
   (fn (_ tokens)
-    (pair %indent-block-tag tokens)))
+    (pair %indent-block-label tokens)))
 
 (def %logo-word
   (fn (_ tok)
@@ -370,7 +370,7 @@
 (def %is-paren?
   (fn (_ tok str)
     (and (pair? tok)
-         (eq? (first tok) %logo-paren-tag)
+         (eq? (first tok) %logo-paren-label)
          (str=? (rest tok) str))))
 
 ; ============================================================

@@ -12,7 +12,7 @@
 
 ; %lang-root is THE BUNDLE'S OWN DIRECTORY, and it comes from the platform:
 ; x.sh defines it after it has read lang.xon and found this tree, ahead of
-; run.x.  It is a seam row (x-lang's tools/contract/seam.x, class `bundle`),
+; run.x.  It is a seam row (x-lang's tools/contract/seam.x, label `bundle`),
 ; so it is as much a promise as %repl-prompt or import-path! -- and unlike
 ; %install-root it needs no guard, because a bundle cannot be loaded in a tree
 ; where it is unbound.

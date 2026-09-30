@@ -201,7 +201,7 @@
             (self (pair tok acc))))))))
 
 ; One full line, given its indent k (first content byte pending).  The
-; first token of a word-led line is re-shaped into the LOGO-INDENT
+; first token of a word-led line is re-typed into the LOGO-INDENT
 ; instance the batch tokenizer would have produced -- (k . word), the
 ; fused token every dispatch consumer already understands -- because
 ; the scanner consumed the newline and indent bytes the analyser would
