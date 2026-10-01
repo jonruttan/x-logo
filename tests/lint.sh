@@ -17,7 +17,7 @@
 # check; this script locates it and names the files to lint.
 #
 # Advisory findings are printed and do not fail the run.  The kit's --strict
-# also fails on the structural rules -- ladder, ladder-dict and shape -- which
+# also fails on the structural rules -- ladder, ladder-dict and depth -- which
 # logo/types.x currently reports one of, so this runs without it.
 #
 # Set X to point at a particular x; X_LANG_KIT overrides the kit location.

@@ -81,14 +81,14 @@
       (set! %logo-vars (pair (pair uname value) %logo-vars)))))
 
 ; ============================================================
-; STOP / RETURN sentinel tags
+; STOP / RETURN sentinel labels
 ; ============================================================
 
-(def %logo-stop-tag (pair 'logo-stop ()))
-(def %logo-return-tag (pair 'logo-return ()))
+(def %logo-stop-label (pair 'logo-stop ()))
+(def %logo-return-label (pair 'logo-return ()))
 
-(def %is-stop? (fn (_ v) (eq? v %logo-stop-tag)))
-(def %is-return? (fn (_ v) (and (pair? v) (eq? (first v) %logo-return-tag))))
+(def %is-stop? (fn (_ v) (eq? v %logo-stop-label)))
+(def %is-return? (fn (_ v) (and (pair? v) (eq? (first v) %logo-return-label))))
 
 ; ============================================================
 ; Argument consumption (delegates to expression parser)
@@ -248,10 +248,10 @@
       ((str=? uword "REPEAT") (%logo-do-repeat remaining))
       ((str=? uword "TO")     (logo-process-to remaining))
       ((str=? uword "IF")     (%logo-do-if remaining))
-      ((str=? uword "STOP")   (error %logo-stop-tag))
+      ((str=? uword "STOP")   (error %logo-stop-label))
       ((str=? uword "RETURN")
         (let ((r (%logo-consume-arg remaining)))
-          (error (pair %logo-return-tag (first r)))))
+          (error (pair %logo-return-label (first r)))))
       ((str=? uword "PRINT")
         (let ((r (%logo-consume-arg remaining)))
           (%logo-print-value (first r))
@@ -477,4 +477,4 @@
 (provide logo/dispatch
   %logo-commands %logo-lookup %logo-vars %logo-var-set!
   logo-process-tokens logo-process-to
-  %logo-stop-tag %logo-return-tag)
+  %logo-stop-label %logo-return-label)
