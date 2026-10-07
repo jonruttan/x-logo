@@ -31,6 +31,6 @@
 ; for equality. The floor is set by one door: (Type named ...), which
 ; logo/state.x fetches the platform's type handles through and which no
 ; release before v0.15.0 provides.
-(requires-release "v0.25.0")
+(requires-release "v0.26.0")
 
 (entry "run.x")
