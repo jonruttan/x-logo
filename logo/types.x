@@ -7,17 +7,13 @@
 ; Fetch the type-system helpers from the catalog (registered by sys/type.x).
 (def %type-io (prim-ref 'type 'io))
 
-(import x/reader/analyser)
+; The analyser states are realized by the platform's lexer (x/reader/lexer):
+; native code when the assembler lane is open, interpreted twins otherwise.
+(import x/reader/lexer)
 ; #520: the leading-whitespace measurement is shared now. Reader-context, so the
-; raw ref is cached rather than dispatched -- same discipline as the terminators
-; below.
+; raw ref is cached rather than dispatched.
 (import x/reader/indent)
 (def %indent-scan-ref (prim-ref 'indent 'scan))
-; Fetch the tokenizer terminators from the catalog (ns `token`). Reader-context
-; states call these per character, so cache the raw refs and call them directly
-; -- never (Analyser accept ...), whose dispatch would allocate mid-reader-callback.
-(def %tok-accept (prim-ref 'token 'accept))
-(def %tok-accept-inclusive (prim-ref 'token 'accept-inclusive))
 (import x/type/str)
 ; Fetch the type prims from the catalog (ns `type` is de-registered, R5).
 (def %make-instance (prim-ref 'type 'make-instance))
@@ -47,19 +43,6 @@
     (or (and (>= chr 65) (<= chr 90))
         (and (>= chr 97) (<= chr 122)))))
 
-(def %logo-word-char?
-  (fn (_ chr)
-    (or (%logo-alpha? chr)
-        (= chr 46)                        ; .
-        (= chr 63)                        ; ?
-        (and (>= chr 48) (<= chr 57))))) ; 0-9
-
-(def %logo-word-continue
-  (fn (self buffer score chr)
-    (if (%logo-word-char? chr)
-      self
-      (%tok-accept buffer score chr))))
-
 ; Forward declarations (set! by dispatch.x/expr.x)
 (def %logo ())
 (def %logo-indent ())
@@ -83,27 +66,96 @@
     (if (null? delimit) #f (null? read-h))))
 
 ; ============================================================
-; Pre-allocated analyse state functions (avoid closure allocation)
+; The analyser states, as forms
 ; ============================================================
+;
+; Every state is one (fn (me buffer score chr) ...) form in the assembler
+; lane's dialect -- nested if, and, or, me for the self loop, the buffer and
+; score doors, a free variable for another state -- handed to (Lexer state
+; form fvars): native code when the lane is open, the interpreted twin of
+; the same form otherwise.  The forms are data here; the states are made with
+; the base below, since a compiled state is process state as the base is,
+; and held in %logo-states, since the collector does not see a compiled
+; state through the base.  Accepting unreads the byte that ended the token
+; and scores; taking keeps it.
 
-; Single-char operator: accept on next char
-(def %logo-op-accept-next
-  (fn (_ buffer score chr2)
-    (%tok-accept buffer score chr2)))
+; the next byte ends the token, whatever it is
+(def %logo-f-accept
+  '(fn (me buffer score chr) (%seq (%buffer-unread buffer) (%score-set score 1 buffer))))
 
-; < followed by second char: accept-inclusive for <- <= <>, accept for others
-(def %logo-op-lt-second
-  (fn (_ buffer score chr2)
-    (if (or (= chr2 45) (= chr2 61) (= chr2 62))
-      (%tok-accept-inclusive buffer score chr2)
-      (%tok-accept buffer score chr2))))
+; one byte: ] [ newline ( )
+(def %logo-f-byte
+  (fn (_ b)
+    (list 'fn '(me buffer score chr) (list 'if (list '= 'chr b) 'accept ()))))
 
-; > followed by second char: accept-inclusive for >=, accept for others
-(def %logo-op-gt-second
-  (fn (_ buffer score chr2)
-    (if (= chr2 61)
-      (%tok-accept-inclusive buffer score chr2)
-      (%tok-accept buffer score chr2))))
+; a word: letters, digits, . and ? after a letter
+(def %logo-f-word
+  '(fn (me buffer score chr)
+     (if (or (and (>= chr 65) (<= chr 90)) (and (>= chr 97) (<= chr 122))
+             (= chr 46) (= chr 63) (and (>= chr 48) (<= chr 57)))
+       me
+       (%seq (%buffer-unread buffer) (%score-set score 1 buffer)))))
+(def %logo-f-word-open
+  '(fn (me buffer score chr)
+     (if (or (and (>= chr 65) (<= chr 90)) (and (>= chr 97) (<= chr 122))) word ())))
+
+; spaces and tabs
+(def %logo-f-ws
+  '(fn (me buffer score chr)
+     (if (or (= chr 32) (= chr 9)) me
+       (%seq (%buffer-unread buffer) (%score-set score 1 buffer)))))
+(def %logo-f-ws-open
+  '(fn (me buffer score chr) (if (or (= chr 32) (= chr 9)) ws ())))
+
+; a newline, then spaces and tabs, then a word
+(def %logo-f-indent-after
+  '(fn (me buffer score chr)
+     (if (or (= chr 32) (= chr 9)) me
+       (if (or (and (>= chr 65) (<= chr 90)) (and (>= chr 97) (<= chr 122))) word ()))))
+(def %logo-f-indent-open
+  '(fn (me buffer score chr) (if (= chr 10) after ())))
+
+; operators: + - * / ^ = , alone; < may go on as <- <= <>; > as >=
+(def %logo-f-op-open
+  '(fn (me buffer score chr)
+     (if (or (= chr 43) (= chr 45) (= chr 42) (= chr 47) (= chr 94) (= chr 61) (= chr 44))
+       accept
+       (if (= chr 60) lt (if (= chr 62) gt ())))))
+(def %logo-f-op-lt
+  '(fn (me buffer score chr)
+     (if (or (= chr 45) (= chr 61) (= chr 62))
+       (%score-set score 1 buffer)
+       (%seq (%buffer-unread buffer) (%score-set score 1 buffer)))))
+(def %logo-f-op-gt
+  '(fn (me buffer score chr)
+     (if (= chr 61)
+       (%score-set score 1 buffer)
+       (%seq (%buffer-unread buffer) (%score-set score 1 buffer)))))
+
+; "...": the closing quote taken, a newline inside is no string
+(def %logo-f-string-body
+  '(fn (me buffer score chr)
+     (if (= chr 34) (%score-set score 1 buffer) (if (= chr 10) () me))))
+(def %logo-f-string-open
+  '(fn (me buffer score chr) (if (= chr 34) body ())))
+
+; ; to the end of the line, the newline left
+(def %logo-f-semi-body
+  '(fn (me buffer score chr)
+     (if (= chr 10) (%seq (%buffer-unread buffer) (%score-set score 1 buffer)) me)))
+(def %logo-f-semi-open
+  '(fn (me buffer score chr) (if (= chr 59) body ())))
+
+; the states the last base make realized, and how many the lane compiled
+(def %logo-states ())
+(def %logo-compiled 0)
+
+(def %logo-st
+  (fn (_ form fvars)
+    (let ((r (Lexer state form fvars)))
+      (do (set! %logo-states (pair (first r) %logo-states))
+          (if (rest r) (set! %logo-compiled (+ %logo-compiled 1)) ())
+          (first r)))))
 
 ; ============================================================
 ; Logo tokenizer base
@@ -142,6 +194,31 @@
               (self (rest al)))))))
     (%set-first! %cell (%logo-type-keep (first %cell)))
 
+    ; The states, each made before the one that hands to it, since a form
+    ; names another state as a free variable bound at make.
+    (set! %logo-states ())
+    (set! %logo-compiled 0)
+    (def accept (%logo-st %logo-f-accept ()))
+    (def word (%logo-st %logo-f-word ()))
+    (def word-open (%logo-st %logo-f-word-open (list (pair 'word word))))
+    (def ws (%logo-st %logo-f-ws ()))
+    (def ws-open (%logo-st %logo-f-ws-open (list (pair 'ws ws))))
+    (def indent-after (%logo-st %logo-f-indent-after (list (pair 'word word))))
+    (def indent-open (%logo-st %logo-f-indent-open (list (pair 'after indent-after))))
+    (def op-lt (%logo-st %logo-f-op-lt ()))
+    (def op-gt (%logo-st %logo-f-op-gt ()))
+    (def op-open
+      (%logo-st %logo-f-op-open (list (pair 'accept accept) (pair 'lt op-lt) (pair 'gt op-gt))))
+    (def string-body (%logo-st %logo-f-string-body ()))
+    (def string-open (%logo-st %logo-f-string-open (list (pair 'body string-body))))
+    (def semi-body (%logo-st %logo-f-semi-body ()))
+    (def semi-open (%logo-st %logo-f-semi-open (list (pair 'body semi-body))))
+    (def close-open (%logo-st (%logo-f-byte 93) (list (pair 'accept accept))))
+    (def open-open (%logo-st (%logo-f-byte 91) (list (pair 'accept accept))))
+    (def nl-open (%logo-st (%logo-f-byte 10) (list (pair 'accept accept))))
+    (def paren-open-open (%logo-st (%logo-f-byte 40) (list (pair 'accept accept))))
+    (def paren-close-open (%logo-st (%logo-f-byte 41) (list (pair 'accept accept))))
+
     ; LOGO-BLOCK
     (set! %logo-block
       (Base make-type base "LOGO-BLOCK"
@@ -152,15 +229,13 @@
     ; LOGO-CLOSE
     (Base make-type base "LOGO-CLOSE"
       (list
-        (pair 'analyse
-          (Analyser make-char-state (%char->integer #\]) %tok-accept ()))
+        (pair 'analyse close-open)
         (pair 'read (fn (_ . args) %logo-block-close))))
 
     ; LOGO-OPEN
     (Base make-type base "LOGO-OPEN"
       (list
-        (pair 'analyse
-          (Analyser make-char-state (%char->integer #\[) %tok-accept ()))
+        (pair 'analyse open-open)
         (pair 'read
           (fn (_ . args)
             (def buf (first args))
@@ -182,9 +257,7 @@
     (set! %logo
       (Base make-type base "LOGO"
         (list
-          (pair 'analyse
-            (fn (_ buffer score chr)
-              (if (%logo-alpha? chr) %logo-word-continue ())))
+          (pair 'analyse word-open)
           (pair 'read
             (fn (_ . args)
               (%make-instance %logo (%buffer-token (first args)))))
@@ -194,14 +267,7 @@
     ; LOGO-WS: spaces and tabs only, discard
     (Base make-type base "LOGO-WS"
       (list
-        (pair 'analyse
-          (fn (self buffer score chr)
-            (if (or (= chr 32) (= chr 9))
-              self
-              (if (> (%buffer-len buffer) 1)
-                (do (%buffer-unread buffer)
-                    (%score-set score 1 buffer))
-                ()))))
+        (pair 'analyse ws-open)
         (pair 'delimit
           (fn (_ buffer score chr)
             (if (or (= chr 32) (= chr 9))
@@ -211,24 +277,13 @@
     ; LOGO-NEWLINE: bare newline, discard
     (Base make-type base "LOGO-NEWLINE"
       (list
-        (pair 'analyse
-          (Analyser make-char-state 10 %tok-accept ()))))
+        (pair 'analyse nl-open)))
 
     ; LOGO-INDENT: \n + spaces/tabs + word
-    (def %indent-after-nl
-      (fn (self buffer score chr)
-        (if (or (= chr 32) (= chr 9))
-          self
-          (if (%logo-alpha? chr)
-            %logo-word-continue
-            ()))))
-
     (set! %logo-indent
       (Base make-type base "LOGO-INDENT"
         (list
-          (pair 'analyse
-            (fn (_ buffer score chr)
-              (if (= chr 10) %indent-after-nl ())))
+          (pair 'analyse indent-open)
           (pair 'read
             (fn (_ . read-args)
               (def text (%buffer-token (first read-args)))
@@ -252,17 +307,7 @@
     (set! %logo-op
       (Base make-type base "LOGO-OP"
         (list
-          (pair 'analyse
-            (fn (_ buffer score chr)
-              ; Single-char: + - * / ^ = ,
-              (if (or (= chr 43) (= chr 45) (= chr 42) (= chr 47)
-                      (= chr 94) (= chr 61) (= chr 44))
-                %logo-op-accept-next
-                ; < may continue with - = >
-                (if (= chr 60) %logo-op-lt-second
-                  ; > may continue with =
-                  (if (= chr 62) %logo-op-gt-second
-                    ())))))
+          (pair 'analyse op-open)
           (pair 'read
             (fn (_ . args)
               (%make-instance %logo-op (%buffer-token (first args)))))
@@ -272,29 +317,19 @@
     ; LOGO-PAREN: ( and )
     (Base make-type base "LOGO-PAREN-OPEN"
       (list
-        (pair 'analyse
-          (Analyser make-char-state 40 %tok-accept ()))
+        (pair 'analyse paren-open-open)
         (pair 'read (fn (_ . args) (pair %logo-paren-label "(")))))
 
     (Base make-type base "LOGO-PAREN-CLOSE"
       (list
-        (pair 'analyse
-          (Analyser make-char-state 41 %tok-accept ()))
+        (pair 'analyse paren-close-open)
         (pair 'read (fn (_ . args) (pair %logo-paren-label ")")))))
 
     ; LOGO-STRING: "..."
-    (def %string-body
-      (fn (self buffer score chr)
-        (if (= chr 34)
-          (%tok-accept-inclusive buffer score chr)
-          (if (= chr 10) () self))))
-
     (set! %logo-string
       (Base make-type base "LOGO-STRING"
         (list
-          (pair 'analyse
-            (fn (_ buffer score chr)
-              (if (= chr 34) %string-body ())))
+          (pair 'analyse string-open)
           (pair 'read
             (fn (_ . args)
               (def text (%buffer-token (first args)))
@@ -307,14 +342,7 @@
     ; LOGO-SEMI: ; comment to end of line (discard)
     (Base make-type base "LOGO-SEMI"
       (list
-        (pair 'analyse
-          (fn (_ buffer score chr)
-            (if (= chr 59)
-              (fn (self buf sc chr2)
-                (if (= chr2 10)
-                  (%tok-accept buf sc chr2)
-                  self))
-              ())))))
+        (pair 'analyse semi-open)))
 
     base)))
 
@@ -413,6 +441,7 @@
 (set! %image-transients
   (pair (fn (_)
           (do (set! %logo-base ())
+              (set! %logo-states ())
               (set! %logo ())
               (set! %logo-indent ())
               (set! %logo-block ())

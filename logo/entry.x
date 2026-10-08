@@ -206,7 +206,8 @@
 ; fused token every dispatch consumer already understands -- because
 ; the scanner consumed the newline and indent bytes the analyser would
 ; have fused from.  Non-word-led lines carry no line marker, exactly
-; like the batch path (%indent-after-nl rejects them).
+; like the batch path (the indent state, types.x's %logo-f-indent-after,
+; rejects them).
 (def %entry-read-line
   (fn (_ k)
     (def tok (%entry-read-tok))
