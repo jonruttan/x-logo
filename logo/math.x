@@ -8,9 +8,7 @@
 ; Degree/radian conversion
 ; ============================================================
 
-(def %deg->rad
-  (fn (_ deg) (Float / (Float * (%as-float deg) %logo-pi) (Float from 180))))
-
+; %deg->rad is state.x's, which the turtle's own moves call.
 (def %rad->deg
   (fn (_ rad) (Float / (Float * rad (Float from 180)) %logo-pi)))
 

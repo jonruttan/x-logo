@@ -21,9 +21,7 @@
 (def %turtle-bc ())    ; bytecode list (reversed, newest first)
 
 (def %deg->rad
-  (fn (_ deg)
-    (Float / (Float * (if (Float float? deg) deg (Float from deg)) %logo-pi)
-        (Float from 180))))
+  (fn (_ deg) (Float / (Float * (%as-float deg) %logo-pi) (Float from 180))))
 
 ; Coercion doors: probe via the non-raising Convert dispatcher and check the
 ; RESULT, so strings keep coercing but an unconvertible token (e.g. a block
