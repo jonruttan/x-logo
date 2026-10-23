@@ -133,6 +133,11 @@
 ; Server
 ; ============================================================
 
+; How many accepts in a row may fail before the server gives up.  A transient
+; failure (a connection aborted before it was accepted) clears on the next
+; call; this many in a row means it will not.
+(def %serve-accept-retries 100)
+
 (def turtle-serve
   (fn (_ port)
     ; Read the HTML template.
@@ -157,11 +162,17 @@
     ; and prints the prompt, so anything written here lands in the middle of
     ; the parent's output, after the prompt it raced.
     (def server-fd (Socket tcp-listen port))
-    ; Accept loop
+    ; Accept loop.  A failed accept is retried, but only so many times in a
+    ; row: a failure that does not clear (a closed or invalid descriptor, no
+    ; descriptors left) would otherwise spin at full CPU.  The raise ends the
+    ; server through the child's guard in logo/main.x.
     (def %serve-loop
-      (fn (self)
+      (fn (self failures)
         (def client-fd (guard (_ -1) (Socket accept server-fd)))
-        (if (< client-fd 0) (self)  ; Accept failed, retry
+        (if (< client-fd 0)
+          (if (< failures %serve-accept-retries)
+            (self (+ failures 1))
+            (Err raise 'io "viewer: accept keeps failing" server-fd))
           (do
             (guard (err
                 (display "Request error: ") (display err) (newline))
@@ -179,7 +190,7 @@
               (Socket send client-fd response))
             ; Close client connection
             (Socket close client-fd)
-            (self)))))
-    (%serve-loop)))
+            (self 0)))))
+    (%serve-loop 0)))
 
 (provide logo/serve turtle-serve %bc-write)

@@ -44,26 +44,39 @@
           ; One expression, so the child does not race for the pipe.
           (let ((pid (Sys fork)))
             (if (= pid 0)
-              ; Ignore SIGINT in the server child so ctrl-c doesn't throw
-              ; STOP errors in the request handler (#226: named surface, no
-              ; more dlsym'd magic numbers)
-              (do (Sys close 0) (Sys open-read "/dev/null")
-                  (Sys signal (Sys sigint) (Sys sig-ign))
-                  (turtle-serve %logo-port))
+              ; The child never leaves this arm.  An error that escaped it
+              ; would unwind into run.x, and the child would start a second
+              ; REPL on this terminal (x-lang's Proc keeps the same rule for
+              ; every fork): so every error is caught, reported, and ends the
+              ; child.  Ignore SIGINT in the server child so ctrl-c doesn't
+              ; throw STOP errors in the request handler (#226).
+              (do (guard (err
+                      (%stderr "viewer: not started: "
+                               (if (str? err) err (%repl-write-to-str err)) "\n")
+                      (Sys exit 1))
+                    (Sys close 0) (Sys open-read "/dev/null")
+                    (Sys signal (Sys sigint) (Sys sig-ign))
+                    (turtle-serve %logo-port))
+                  (Sys exit 0))
               pid)))
-        ; Kill the server child when the REPL exits.  No server in batch:
-        ; %logo-on-exit stays nil and logo-batch's unless skips it.
-        (set! %logo-on-exit
-          (fn ()
-            ; Kill politely, then reap: the child was never waited on
-            ; before, leaving a zombie for the parent's remaining
-            ; lifetime (#226).
-            (Sys kill %server-pid (Sys sigterm))
-            (Sys wait %server-pid)))
-        ; The one announcement, from the parent: the child is forked and
-        ; shares this terminal, so a line printed there arrives whenever it
-        ; arrives -- after the prompt, as often as not.
-        (display "viewer: http://localhost:" %logo-port "\n"))
+        ; (Sys fork) answers -1 when it fails.  Then there is no child, and no
+        ; exit hook: kill(-1) would signal every process the user owns.
+        (if (< %server-pid 0)
+          (%stderr "viewer: not started: fork failed\n")
+          (do
+            ; Kill the server child when the REPL exits.  No server in batch:
+            ; %logo-on-exit stays nil and logo-batch's unless skips it.
+            (set! %logo-on-exit
+              (fn ()
+                ; Kill politely, then reap: the child was never waited on
+                ; before, leaving a zombie for the parent's remaining
+                ; lifetime (#226).
+                (Sys kill %server-pid (Sys sigterm))
+                (Sys wait %server-pid)))
+            ; The one announcement, from the parent: the child is forked and
+            ; shares this terminal, so a line printed there arrives whenever
+            ; it arrives -- after the prompt, as often as not.
+            (display "viewer: http://localhost:" %logo-port "\n"))))
       ())))
 
 ; --- Hooks: append bytecodes, clear file on clearscreen ---

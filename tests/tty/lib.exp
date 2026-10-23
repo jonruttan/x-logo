@@ -28,6 +28,22 @@ set timeout [expr {[info exists env(X_TTY_TIMEOUT)] ? $env(X_TTY_TIMEOUT) : 60}]
 # installed last).  The old in-repo version spawned `sh x.sh -l logo` from the
 # x-lang root; both halves of that dangled the moment Logo left the tree.
 proc spawn_logo {} {
+    global spawn_id
+    spawn_logo_session
+    expect {
+        "localhost:8080" {}
+        timeout { puts "FAIL: no banner"; exit 1 }
+        eof { puts "FAIL: died at spawn"; exit 1 }
+    }
+    expect {
+        -re {\? } {}
+        timeout { puts "FAIL: no prompt"; exit 1 }
+    }
+}
+
+# Start a session and record its pid, without waiting for anything: for a
+# test that must see output which may arrive before the banner.
+proc spawn_logo_session {} {
     global spawn_id spawn_pid env
     set x [expr {[info exists env(X)] ? $env(X) : "x"}]
     # STAND WHERE x CAN BOOT.  tty-runner.sh works this out once (a checkout's
@@ -46,15 +62,6 @@ proc spawn_logo {} {
         set f [open $env(LOGO_TTY_PIDFILE) a]
         puts $f $spawn_pid
         close $f
-    }
-    expect {
-        "localhost:8080" {}
-        timeout { puts "FAIL: no banner"; exit 1 }
-        eof { puts "FAIL: died at spawn"; exit 1 }
-    }
-    expect {
-        -re {\? } {}
-        timeout { puts "FAIL: no prompt"; exit 1 }
     }
 }
 
