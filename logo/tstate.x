@@ -1,7 +1,7 @@
 ; tstate.x -- Extended turtle state commands
-(import logo/state)
-(import logo/types)
-(import logo/expr)
+(module logo/tstate)
+(import logo/state as-float)
+(import logo/types block-contents)
 (import x/num/float)
 
 ; ============================================================
@@ -49,17 +49,16 @@
             ((null? l) #f)
             ((if (number? item) (= (first l) item) (eq? (first l) item)) #t)
             (#t (self (rest l))))))
-      (%search (%block-contents lst))))
+      (%search (block-contents lst))))
   (Logo functions)))
 
 ; GROW and S.FORWARD
 (Logo commands
   (pair (list "GROW"      1 (fn (_ factor)
-          (Turtle scale (Float * (Turtle scale) (%as-float factor)))))
+          (Turtle scale (Float * (Turtle scale) (as-float factor)))))
   (pair (list "S.FORWARD" 1 (fn (_ dist)
-          (Turtle forward (Float * (%as-float dist) (Turtle scale)))))
+          (Turtle forward (Float * (as-float dist) (Turtle scale)))))
   (pair (list "S.FD"      1 (fn (_ dist)
-          (Turtle forward (Float * (%as-float dist) (Turtle scale)))))
+          (Turtle forward (Float * (as-float dist) (Turtle scale)))))
   (Logo commands)))))
 
-(provide logo/tstate)

@@ -1,5 +1,5 @@
 ; types.x -- Logo tokenizer base and type definitions
-(import logo/state)
+(module logo/types)
 ; Fetch the tokenizer prims from the catalog (ns `buf`/`tok` are de-registered, R5).
 (def %buffer-token (prim-ref 'buf 'tok))
 (def %token-read (prim-ref 'tok 'read))
@@ -23,8 +23,6 @@
 ; Fetch the char/int casts from the catalog (ns `char`/`int` utility members de-registered, R5).
 (def %char->integer (prim-ref 'char '->int))
 
-
-
 ; ============================================================
 ; Type helpers
 ; ============================================================
@@ -35,7 +33,7 @@
 ; entry layer turns it into an "Unterminated input" raise OUTSIDE the
 ; reader; on read-str paths it lands in the token list, where dispatch
 ; skips it like any wordless token (no worse than the old silent close).
-(def %logo-truncated (pair 'logo-truncated ()))
+(def logo-truncated (pair 'logo-truncated ()))
 (def %logo-paren-label 'logo-paren)
 
 (def %logo-alpha?
@@ -44,13 +42,6 @@
         (and (>= chr 97) (<= chr 122)))))
 
 ; Forward declarations (set! by dispatch.x/expr.x)
-(def %logo ())
-(def %logo-indent ())
-(def %logo-block ())
-(def %logo-op ())
-(def %logo-string ())
-(def logo-process-tokens ())
-(def logo-process-to ())
 
 ; ============================================================
 ; The name tables
@@ -62,6 +53,12 @@
 ; table as it was when imported, before TO added a procedure.
 (def-class Logo ()
   (static
+    (base () "The token base the reader is registered on; made per process, see the image hooks below")
+    (word-type () "The reader type of a word")
+    (indent-type () "The reader type of an indentation step")
+    (block-type () "The reader type of a bracketed block")
+    (op-type () "The reader type of an operator")
+    (string-type () "The reader type of a string")
     (vars () "Variables, (NAME . value), the innermost binding first")
     (commands () "Commands, (NAME ARITY HANDLER); an arity of -1 is a special form")
     (functions () "Functions an expression can call, (NAME ARITY HANDLER), or (NAME HANDLER) for one that takes no arguments")
@@ -194,7 +191,7 @@
 
 ; The base is process state, so this is a builder, not just a build. (Base
 ; make) allocates a base on a chain of its own that the ambient heap cannot
-; name, so a state image cannot carry %logo-base or its type handles: the
+; name, so a state image cannot carry (Logo base) or its type handles: the
 ; writer nils them in its child (the transient below) and calls this again once
 ; the image is loaded (the recache hook), the same call that makes them here.
 ; entry.x's doors bind prims into whatever base this last returned.
@@ -251,11 +248,12 @@
     (def paren-close-open (%logo-st (%logo-f-byte 41) (list (pair 'accept accept))))
 
     ; LOGO-BLOCK
-    (set! %logo-block
-      (Base make-type base "LOGO-BLOCK"
+    (Logo block-type (Base make-type base "LOGO-BLOCK"
         (list
           (pair 'write (fn (_ _) (display "[ ... ]")))
-          (pair 'eval (fn (_ self) (logo-process-tokens (first self)))))))
+          ; logo/dispatch defines logo-process-tokens and imports this module,
+          ; so it is reached through the module at call time, not imported.
+          (pair 'eval (fn (_ self) ((eval (lit logo-process-tokens) (module logo/dispatch)) (first self)))))))
 
     ; LOGO-CLOSE
     (Base make-type base "LOGO-CLOSE"
@@ -278,20 +276,19 @@
                 ; is banned (it crashed) -- and the entry layer raises
                 ; outside.
                 (if (null? tok)
-                  %logo-truncated
+                  logo-truncated
                   (if (eq? tok %logo-block-close)
-                    (%make-instance %logo-block (List reverse acc))
+                    (%make-instance (Logo block-type) (List reverse acc))
                     (self (pair tok acc))))))
             (%rb ())))))
 
     ; LOGO (word type)
-    (set! %logo
-      (Base make-type base "LOGO"
+    (Logo word-type (Base make-type base "LOGO"
         (list
           (pair 'analyse word-open)
           (pair 'read
             (fn (_ . args)
-              (%make-instance %logo (%buffer-token (first args)))))
+              (%make-instance (Logo word-type) (%buffer-token (first args)))))
           (pair 'write
             (fn (_ self) (display (first self)))))))
 
@@ -311,8 +308,7 @@
         (pair 'analyse nl-open)))
 
     ; LOGO-INDENT: \n + spaces/tabs + word
-    (set! %logo-indent
-      (Base make-type base "LOGO-INDENT"
+    (Logo indent-type (Base make-type base "LOGO-INDENT"
         (list
           (pair 'analyse indent-open)
           (pair 'read
@@ -329,19 +325,18 @@
               (def indent (first scanned))
               (def indent-end (rest scanned))
               (def word (Str8 sub indent-end (- len indent-end) text))
-              (%make-instance %logo-indent (pair indent word))))
+              (%make-instance (Logo indent-type) (pair indent word))))
           (pair 'write
             (fn (_ self)
               (display (first (rest (first self)))))))))
 
     ; LOGO-OP: operators and <- assignment
-    (set! %logo-op
-      (Base make-type base "LOGO-OP"
+    (Logo op-type (Base make-type base "LOGO-OP"
         (list
           (pair 'analyse op-open)
           (pair 'read
             (fn (_ . args)
-              (%make-instance %logo-op (%buffer-token (first args)))))
+              (%make-instance (Logo op-type) (%buffer-token (first args)))))
           (pair 'write
             (fn (_ self) (display (first self)))))))
 
@@ -357,15 +352,14 @@
         (pair 'read (fn (_ . args) (pair %logo-paren-label ")")))))
 
     ; LOGO-STRING: "..."
-    (set! %logo-string
-      (Base make-type base "LOGO-STRING"
+    (Logo string-type (Base make-type base "LOGO-STRING"
         (list
           (pair 'analyse string-open)
           (pair 'read
             (fn (_ . args)
               (def text (%buffer-token (first args)))
               (def len (Str8 length text))
-              (%make-instance %logo-string (Str8 sub 1 (- len 2) text))))
+              (%make-instance (Logo string-type) (Str8 sub 1 (- len 2) text))))
           (pair 'write
             (fn (_ self)
               (display "\"" (first self) "\""))))))
@@ -377,56 +371,56 @@
 
     base)))
 
-(def %logo-base (%logo-base-make))
-
-
 ; ============================================================
 ; Block and word accessors
 ; ============================================================
 
 (def %indent-block-label (pair 'indent-block ()))
 
-(def %is-block?
+; The base this process reads with; an image remakes it (the hooks below).
+(Logo base (%logo-base-make))
+
+(def is-block?
   (fn (_ tok)
     (match
-      ((%type? tok %logo-block) #t)
+      ((%type? tok (Logo block-type)) #t)
       ((pair? tok) (eq? (first tok) %indent-block-label))
       (#t #f))))
 
-(def %block-contents
+(def block-contents
   (fn (_ tok)
     (match
-      ((%type? tok %logo-block) (first tok))
+      ((%type? tok (Logo block-type)) (first tok))
       (#t (rest tok)))))
 
-(def %make-indent-block
+(def make-indent-block
   (fn (_ tokens)
     (pair %indent-block-label tokens)))
 
-(def %logo-word
+(def logo-word
   (fn (_ tok)
     (match
-      ((%type? tok %logo)        (first tok))
-      ((%type? tok %logo-indent) (rest (first tok)))
+      ((%type? tok (Logo word-type))        (first tok))
+      ((%type? tok (Logo indent-type)) (rest (first tok)))
       (#t ()))))
 
 (def %logo-op-str
   (fn (_ tok)
-    (if (%type? tok %logo-op) (first tok) ())))
+    (if (%type? tok (Logo op-type)) (first tok) ())))
 
 (def %is-op?
   (fn (_ tok)
-    (%type? tok %logo-op)))
+    (%type? tok (Logo op-type))))
 
-(def %is-string?
+(def is-string?
   (fn (_ tok)
-    (%type? tok %logo-string)))
+    (%type? tok (Logo string-type))))
 
-(def %logo-string-val
+(def logo-string-val
   (fn (_ tok)
     (first tok)))
 
-(def %is-paren?
+(def is-paren?
   (fn (_ tok str)
     (and (pair? tok)
          (eq? (first tok) %logo-paren-label)
@@ -449,18 +443,16 @@
     (%find alist)))
 
 ; Check if a token's word matches a keyword (case-insensitive)
-(def %logo-word=?
+(def logo-word=?
   (fn (_ tok keyword)
-    (let ((w (%logo-word tok)))
+    (let ((w (logo-word tok)))
       (and (not (null? w))
            (str=? (Str upcase w) keyword)))))
 
 ; Command entry accessors
 (def %cmd-name    (fn (_ entry) (first entry)))
-(def %cmd-arity   (fn (_ entry) (first (rest entry))))
-(def %cmd-handler (fn (_ entry) (first (rest (rest entry)))))
-
-
+(def cmd-arity   (fn (_ entry) (first (rest entry))))
+(def cmd-handler (fn (_ entry) (first (rest (rest entry)))))
 
 ; ------------------------------------------------------------
 ; The base, across a state image
@@ -471,22 +463,17 @@
 ; without it.
 (set! %image-transients
   (pair (fn (_)
-          (do (set! %logo-base ())
+          (do (Logo base ())
               (set! %logo-states ())
-              (set! %logo ())
-              (set! %logo-indent ())
-              (set! %logo-block ())
-              (set! %logo-op ())
-              (set! %logo-string ())))
+              (Logo word-type ())
+              (Logo indent-type ())
+              (Logo block-type ())
+              (Logo op-type ())
+              (Logo string-type ())))
         %image-transients))
 (set! %image-recache-hooks
-  (pair (fn (_) (set! %logo-base (%logo-base-make))) %image-recache-hooks))
+  (pair (fn (_) (Logo base (%logo-base-make))) %image-recache-hooks))
 
 (provide logo/types
-  %logo-base %logo-base-make %logo %logo-indent %logo-block %logo-op %logo-string
-  %logo-truncated
-  %logo-word %logo-word=? %is-block? %block-contents %make-indent-block
-  %logo-op-str %is-op? %is-string? %logo-string-val %is-paren?
-  %logo-alpha? logo-process-tokens logo-process-to
-  Logo
-  %logo-alist-find %cmd-name %cmd-arity %cmd-handler)
+  Logo block-contents cmd-arity cmd-handler is-block? is-paren? is-string?
+  logo-string-val logo-truncated logo-word logo-word=? make-indent-block)

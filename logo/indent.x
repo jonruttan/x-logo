@@ -12,13 +12,13 @@
 ;   mismatch open   a line dedenting to a column no open block sits at opens a
 ;                   block there -- a genuine choice, where Python raises and
 ;                   x-sweet unwinds past it.
-(import logo/types)
+(module logo/indent)
+(import logo/types make-indent-block)
 (import x/reader/indent)
 ; Fetch the type prims from the catalog (ns `type` is de-registered, R5).
 (def %type? (prim-ref 'type '?))
 
-
-(def %logo-indent-to-blocks
+(def logo-indent-to-blocks
   (fn (_ tokens)
     ; One accumulator per open level, innermost first, each holding its tokens
     ; reversed. The COLUMNS are the indenter's; only the tokens are ours.
@@ -26,7 +26,7 @@
 
     (def %close-one
       (fn (_ accs)
-        (def block (%make-indent-block (List reverse (first accs))))
+        (def block (make-indent-block (List reverse (first accs))))
         (pair (pair block (first (rest accs))) (rest (rest accs)))))
 
     ; feed's contract -- zero or more `close`, then exactly one `open` or
@@ -51,7 +51,7 @@
           ; closes and nothing else -- there is no line to continue.
           (%apply (ind close-all) accs ())
           (let ((tok (first toks)))
-            (if (%type? tok %logo-indent)
+            (if (%type? tok (Logo indent-type))
               (self (rest toks) (%apply (ind feed (first (first tok))) accs tok))
               ; Not an indent token: it joins the line already being built, and
               ; the indenter never hears about it.
@@ -60,4 +60,5 @@
 
     (List reverse (first (%process tokens (list ()))))))
 
-(provide logo/indent %logo-indent-to-blocks)
+(provide logo/indent
+  logo-indent-to-blocks)

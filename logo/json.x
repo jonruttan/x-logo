@@ -1,8 +1,9 @@
 ; json.x -- Turtle bytecode and JSON output
+(module logo/json)
+(import logo/serve fstr)
 (import logo/state)
 ; Fetch the io plumbing prims from the catalog (ns `io` partly de-registered, R5).
 (def %write-to-str (prim-ref 'io 'write-to-str))
-
 
 ; ============================================================
 ; Bytecode JSON array string (for static embedding)
@@ -11,7 +12,7 @@
 (def turtle-bc-str
   (fn ()
     (def bc (List reverse (Turtle bc)))
-    (def %fstr (fn (_ v) (%write-to-str v)))
+    (def fstr (fn (_ v) (%write-to-str v)))
     (def %build
       (fn (self items acc first?)
         (if (null? items) acc
@@ -20,7 +21,7 @@
             (def s
               (if (str? item)
                 (Str append sep "\"" item "\"")
-                (Str append sep (%fstr item))))
+                (Str append sep (fstr item))))
             (self (rest items) (Str append acc s) #f)))))
     (Str append "[" (%build bc "" #t) "]")))
 
@@ -36,4 +37,5 @@
   (fn ()
     (display (turtle-bc-str) "\n")))
 
-(provide logo/json turtle-json turtle-json-str turtle-bc-str)
+(provide logo/json
+  turtle-bc-str turtle-json turtle-json-str)

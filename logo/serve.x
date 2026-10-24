@@ -23,6 +23,7 @@
 ; the second place that knows where the bundle lives.
 ; lint-known: %lang-root
 
+(module logo/serve)
 (import x/sys/posix)
 (import x/sys/file)
 ; Socket plumbing is homed on the Socket class (#29); this app is its first
@@ -35,7 +36,6 @@
 (def %dlsym (prim-ref 'ffi 'dlsym))
 ; Fetch the io plumbing prims from the catalog (ns `io` partly de-registered, R5).
 (def %write-to-str (prim-ref 'io 'write-to-str))
-
 
 ; ============================================================
 ; HTTP helpers
@@ -84,7 +84,7 @@
 
 (def %bc-path "/tmp/turtle.bc")
 (def %bc-fd -1)
-(def %fstr (fn (_ v) (%write-to-str v)))
+(def fstr (fn (_ v) (%write-to-str v)))
 
 (def %bc-open
   (fn ()
@@ -95,7 +95,7 @@
 ; 0-arg: writes "OP" + comma + newline
 ; 1-arg: writes "OP",val + comma + newline
 ; 2-arg: writes "OP",a,b + comma + newline
-(def %bc-append
+(def bc-append
   (fn (_ . args)
     (%bc-open)
     (def op (first args))
@@ -104,12 +104,12 @@
       (if (null? rest-args)
         (Str append "\"" op "\",\n")
         (if (null? (rest rest-args))
-          (Str append "\"" op "\"," (%fstr (first rest-args)) ",\n")
-          (Str append "\"" op "\"," (%fstr (first rest-args))
-               "," (%fstr (first (rest rest-args))) ",\n"))))))
+          (Str append "\"" op "\"," (fstr (first rest-args)) ",\n")
+          (Str append "\"" op "\"," (fstr (first rest-args))
+               "," (fstr (first (rest rest-args))) ",\n"))))))
 
 ; Clear bytecode file
-(def %bc-clear
+(def bc-clear
   (fn ()
     (if (>= %bc-fd 0) (Sys close %bc-fd))
     (def fd (Sys open-write %bc-path))
@@ -124,7 +124,7 @@
       (Str append "[" (Str8 sub 0 (- (Str8 length content) 2) content) "]"))))
 
 ; Write initial empty bytecode file
-(def %bc-write
+(def bc-write
   (fn ()
     (def fd (Sys open-write %bc-path))
     (if (>= fd 0) (Sys close fd))))
@@ -193,4 +193,5 @@
             (self 0)))))
     (%serve-loop 0)))
 
-(provide logo/serve turtle-serve %bc-write)
+(provide logo/serve
+  bc-append bc-clear bc-write fstr turtle-serve)

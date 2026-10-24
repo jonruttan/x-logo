@@ -1,27 +1,29 @@
 ; state.x -- Turtle state and movement primitives
+(module logo/state)
+(import logo/types)
 (import x/num/float)
 
 ; The platform values this bundle reads, each through its public door:
 ; the type handles convert is asked for, and pi.  logo/math.x and
-; logo/tstate.x read %logo-pi too.
+; logo/tstate.x read logo-pi too.
 (def %logo-int-type (Type named INTEGER))
 (def %logo-float-type (Type named FLOAT))
-(def %logo-pi (Float pi))
+(def logo-pi (Float pi))
 
-(def %deg->rad
-  (fn (_ deg) (Float / (Float * (%as-float deg) %logo-pi) (Float from 180))))
+(def deg->rad
+  (fn (_ deg) (Float / (Float * (as-float deg) logo-pi) (Float from 180))))
 
 ; Coercion doors: probe via the non-raising Convert dispatcher and check the
 ; RESULT, so strings keep coercing but an unconvertible token (e.g. a block
 ; in a numeric slot) raises here instead of crashing in the float FFI.
-(def %as-float
+(def as-float
   (fn (_ n)
     (if (Float float? n) n
       (let ((f (Convert to n %logo-float-type)))
         (if (Float float? f) f
           (Err raise 'type "Logo: expected a number" n))))))
 
-(def %as-int
+(def as-int
   (fn (_ n)
     (match
       ((Float float? n) (Float ->int n))
@@ -58,21 +60,21 @@
       (unless (null? (self on-bc)) (apply (self on-bc) (pair op args))))
 
     (method forward (self n)
-      (def dist (%as-float n))
+      (def dist (as-float n))
       (self emit "F" dist)
-      (def rad (%deg->rad (self heading)))
+      (def rad (deg->rad (self heading)))
       (self x (Float + (self x) (Float * dist (Float sin rad))))
       (self y (Float - (self y) (Float * dist (Float cos rad)))))
 
     (method back (self n) (self forward (- n)))
 
     (method right (self n)
-      (def deg (%as-float n))
+      (def deg (as-float n))
       (self heading (Float + (self heading) deg))
       (self emit "R" deg))
 
     (method left (self n)
-      (def deg (%as-float n))
+      (def deg (as-float n))
       (self heading (Float - (self heading) deg))
       (self emit "L" deg))
 
@@ -84,16 +86,16 @@
       (self emit "K" color))
 
     (method penwidth (self width)
-      (self pen-width (%as-float width))
-      (self emit "W" (%as-float width)))
+      (self pen-width (as-float width))
+      (self emit "W" (as-float width)))
 
     (method setheading (self n)
-      (self heading (%as-float n))
-      (self emit "H" (%as-float n)))
+      (self heading (as-float n))
+      (self emit "H" (as-float n)))
 
     (method setxy (self px py)
-      (def nx (%as-float px))
-      (def ny (%as-float py))
+      (def nx (as-float px))
+      (def ny (as-float py))
       (self emit "M" nx ny)
       (self x nx)
       (self y ny))
@@ -105,14 +107,14 @@
       (self heading (Float from 0)))
 
     (method distance (self px py)
-      (def dx (Float - (%as-float px) (self x)))
-      (def dy (Float - (%as-float py) (self y)))
+      (def dx (Float - (as-float px) (self x)))
+      (def dy (Float - (as-float py) (self y)))
       (Float sqrt (Float + (Float * dx dx) (Float * dy dy))))
 
     (method towards (self px py)
-      (def dx (Float - (%as-float px) (self x)))
-      (def dy (Float - (self y) (%as-float py)))
-      (Float / (Float * (Float atan2 dx dy) (Float from 180)) %logo-pi))
+      (def dx (Float - (as-float px) (self x)))
+      (def dy (Float - (self y) (as-float py)))
+      (Float / (Float * (Float atan2 dx dy) (Float from 180)) logo-pi))
 
     ; TURTLE.STATE and SETTURTLE: position, heading and pen as one list.
     (method state (self)
@@ -138,5 +140,5 @@
 (Turtle clearscreen)
 (Turtle scale (Float from 1))
 
-
-(provide logo/state Turtle %as-float %as-int)
+(provide logo/state
+  Turtle as-float as-int deg->rad logo-pi)
