@@ -3,24 +3,26 @@
 ; Each parse function takes a token list, returns (value . remaining-tokens).
 ; Precedence (low→high): comparison, additive, multiplicative, power, unary, primary.
 
-(import logo/state)
-(import logo/types)
+(module logo/expr)
+(import logo/state as-float)
+(import logo/types
+  cmd-arity cmd-handler is-block? is-paren? is-string? logo-string-val
+  logo-word)
 ; Fetch the type prims from the catalog (ns `type` is de-registered, R5).
 (def %type? (prim-ref 'type '?))
-
 
 ; ============================================================
 ; Operator helpers
 ; ============================================================
 
-(def %is-op-str?
+(def is-op-str?
   (fn (_ tok s)
-    (and (%type? tok %logo-op)
+    (and (%type? tok (Logo op-type))
          (str=? (first tok) s))))
 
-(def %op-precedence
+(def op-precedence
   (fn (_ tok)
-    (if (not (%type? tok %logo-op)) -1
+    (if (not (%type? tok (Logo op-type))) -1
       (let ((s (first tok)))
         (match
           ((str=? s "=")  1) ((str=? s ">")  1) ((str=? s "<")  1)
@@ -34,20 +36,20 @@
   (fn (_ op left right)
     (def %float? (or (Float float? left) (Float float? right)))
     (match
-      ((str=? op "+") (if %float? (Float + (%as-float left) (%as-float right)) (+ left right)))
-      ((str=? op "-") (if %float? (Float - (%as-float left) (%as-float right)) (- left right)))
-      ((str=? op "*") (if %float? (Float * (%as-float left) (%as-float right)) (* left right)))
-      ((str=? op "/") (Float / (%as-float left) (%as-float right)))
-      ((str=? op "^") (Float exp (Float * (%as-float right) (Float log (%as-float left)))))
+      ((str=? op "+") (if %float? (Float + (as-float left) (as-float right)) (+ left right)))
+      ((str=? op "-") (if %float? (Float - (as-float left) (as-float right)) (- left right)))
+      ((str=? op "*") (if %float? (Float * (as-float left) (as-float right)) (* left right)))
+      ((str=? op "/") (Float / (as-float left) (as-float right)))
+      ((str=? op "^") (Float exp (Float * (as-float right) (Float log (as-float left)))))
       ((str=? op "=")
         (match
           ((str? left)  (str=? left right))
-          ((Float float? left) (Float = left (%as-float right)))
+          ((Float float? left) (Float = left (as-float right)))
           (#t (= left right))))
-      ((str=? op ">")  (> (%as-float left) (%as-float right)))
-      ((str=? op "<")  (< (%as-float left) (%as-float right)))
-      ((str=? op ">=") (>= (%as-float left) (%as-float right)))
-      ((str=? op "<=") (<= (%as-float left) (%as-float right)))
+      ((str=? op ">")  (> (as-float left) (as-float right)))
+      ((str=? op "<")  (< (as-float left) (as-float right)))
+      ((str=? op ">=") (>= (as-float left) (as-float right)))
+      ((str=? op "<=") (<= (as-float left) (as-float right)))
       ((str=? op "<>") (if (str? left) (not (str=? left right)) (not (= left right))))
       (#t (Err raise 'value (Str append "Unknown operator: " op) ())))))
 
@@ -55,7 +57,7 @@
 ; Expression parser (returns (value . remaining-tokens))
 ; ============================================================
 
-(def %logo-parse-expr ())
+(def logo-parse-expr ())
 (def %logo-parse-primary ())
 (def %logo-parse-fn-args ())
 (def %logo-parse-infix ())
@@ -67,7 +69,7 @@
 (set! %logo-resolve-word
   (fn (_ word rest-t)
     ; Function/command call with parens: NAME(args)
-    (if (and (not (null? rest-t)) (%is-paren? (first rest-t) "("))
+    (if (and (not (null? rest-t)) (is-paren? (first rest-t) "("))
       (%logo-call-with-args word (rest rest-t))
       ; Variable, 0-arg function, or 0-arg command
       (%logo-resolve-value word rest-t))))
@@ -78,11 +80,11 @@
       (def args (first args-result))
       (def fn-entry (Logo function word))
       (if (not (null? fn-entry))
-        (pair (apply (%cmd-handler fn-entry) args) (rest args-result))
+        (pair (apply (cmd-handler fn-entry) args) (rest args-result))
         (let ((cmd (Logo command word)))
           (if (null? cmd)
             (Err raise 'value (Str append "Unknown function: " word) ())
-            (pair (apply (%cmd-handler cmd) args) (rest args-result))))))))
+            (pair (apply (cmd-handler cmd) args) (rest args-result))))))))
 
 (set! %logo-resolve-value
   (fn (_ word rest-t)
@@ -94,8 +96,8 @@
           (if (and (not (null? fn-entry)) (null? (rest (rest fn-entry))))
             (pair ((first (rest fn-entry))) rest-t)
             (let ((cmd (Logo command word)))
-              (if (and (not (null? cmd)) (= (%cmd-arity cmd) 0))
-                (pair ((%cmd-handler cmd)) rest-t)
+              (if (and (not (null? cmd)) (= (cmd-arity cmd) 0))
+                (pair ((cmd-handler cmd)) rest-t)
                 (Err raise 'value (Str append "Undefined: " word) ())))))))))
 
 (set! %logo-parse-primary
@@ -106,29 +108,29 @@
         (match
           ((number? tok)        (pair tok rest-t))
           ((Float float? tok)         (pair tok rest-t))
-          ((%is-string? tok)    (pair (%logo-string-val tok) rest-t))
-          ((%is-block? tok)     (pair tok rest-t))
-          ((%is-paren? tok "(")
-            (let ((inner (%logo-parse-expr rest-t)))
+          ((is-string? tok)    (pair (logo-string-val tok) rest-t))
+          ((is-block? tok)     (pair tok rest-t))
+          ((is-paren? tok "(")
+            (let ((inner (logo-parse-expr rest-t)))
               (if (null? (rest inner))
                 (Err raise 'value "Expected )" ())
                 (let ((next (first (rest inner))))
                   (match
-                    ((%is-paren? next ")")
+                    ((is-paren? next ")")
                       (pair (first inner) (rest (rest inner))))
                     ; Comma — return value, skip comma
                     ; Handles COMMAND (arg1, arg2) syntax
-                    ((%is-op-str? next ",")
+                    ((is-op-str? next ",")
                       (pair (first inner) (rest (rest inner))))
                     (#t (Err raise 'value "Expected )" ())))))))
-          ((%is-op-str? tok "-")
+          ((is-op-str? tok "-")
             (let ((r (%logo-parse-primary rest-t)))
               (pair (if (Float float? (first r))
                       (Float * (Float from -1) (first r))
                       (- (first r)))
                     (rest r))))
           (#t
-            (let ((raw-word (%logo-word tok)))
+            (let ((raw-word (logo-word tok)))
               (if (null? raw-word)
                 (Err raise 'value "Unexpected token in expression" ())
                 (%logo-resolve-word (Str upcase raw-word) rest-t)))))))))
@@ -140,12 +142,12 @@
       (fn (self toks acc)
         (match
           ((null? toks) (Err raise 'value "Missing ) in function call" ()))
-          ((%is-paren? (first toks) ")")
+          ((is-paren? (first toks) ")")
             (pair (List reverse acc) (rest toks)))
           (#t
-            (let ((r (%logo-parse-expr toks)))
+            (let ((r (logo-parse-expr toks)))
               (if (and (not (null? (rest r)))
-                       (%is-op-str? (first (rest r)) ","))
+                       (is-op-str? (first (rest r)) ","))
                 (self (rest (rest r)) (pair (first r) acc))
                 (self (rest r) (pair (first r) acc))))))))
     (%collect tokens ())))
@@ -154,7 +156,7 @@
 (set! %logo-parse-infix
   (fn (_ tokens left min-prec)
     (if (null? tokens) (pair left tokens)
-      (let ((prec (%op-precedence (first tokens))))
+      (let ((prec (op-precedence (first tokens))))
         (if (< prec min-prec) (pair left tokens)
           (let ((op (first (first tokens)))
                 (after-op (rest tokens)))
@@ -168,13 +170,12 @@
               (%logo-parse-infix rest-tokens (%op-apply op left right) min-prec))))))))
 
 ; Top-level expression parser
-(set! %logo-parse-expr
+(set! logo-parse-expr
   (fn (_ tokens)
     (let ((primary (%logo-parse-primary tokens)))
       (%logo-parse-infix (rest primary) (first primary) 0))))
 
-(def %logo-parse-one-expr %logo-parse-expr)
+(def logo-parse-one-expr logo-parse-expr)
 
 (provide logo/expr
-  %logo-parse-expr %logo-parse-one-expr
-  %logo-resolve-word %is-op-str?)
+  is-op-str? logo-parse-expr logo-parse-one-expr op-precedence)

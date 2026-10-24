@@ -1,17 +1,18 @@
 ; repl.x -- Logo REPL over the streaming entry reader (#157), plus batch.
+(module logo/repl)
+(import logo/indent logo-indent-to-blocks)
+(import logo/dispatch logo-process-tokens)
+(import logo/entry
+  logo-entry-flush logo-entry-same? logo-eof logo-filein-cell
+  logo-read-entry)
 (import logo/types)
 ; Fetch the tokenizer prims from the catalog (ns `buf`/`tok` are de-registered, R5).
 (def %token-read-string (prim-ref 'tok 'read-str))
 
-(import logo/dispatch)
-(import logo/indent)
-(import logo/entry)
 ; Fetch the io plumbing prims from the catalog (ns `io` partly de-registered, R5).
 (def %read-char (prim-ref 'io 'read-char))
 ; Fetch the char/int casts from the catalog (ns `char`/`int` utility members de-registered, R5).
 (def %integer->char (prim-ref 'int '->char))
-
-
 
 ; ============================================================
 ; Line reader (batch mode only -- the interactive path reads through
@@ -38,6 +39,7 @@
 
 (def %logo-prompt "? ")
 (def %logo-on-exit ())
+(def logo-on-exit! (fn (_ f) (set! %logo-on-exit f)))   ; set by logo/main
 (def %logo-on-command ())
 
 ; Cancel marker: fresh pair, identity-compared.
@@ -59,7 +61,7 @@
       (do (Sys dup2 3 0) (Sys close 3)))
     ; The SIGINT handler stays installed permanently (boot installed
     ; it): ctrl-c pops a blocking read as EOF with %sigint-flag set,
-    ; and the entry reader turns that into %logo-eof (empty prompt) or
+    ; and the entry reader turns that into logo-eof (empty prompt) or
     ; an Unterminated-input raise (mid-entry) -- the guard below
     ; classifies.  During EXECUTION the eval poll raises STOP into the
     ; eval guard.  The old restore/install dance (default SIGINT while
@@ -67,9 +69,9 @@
     ; viewer child is never orphaned.
     (%set-cell-int! %sigint-flag 0)
     (display %logo-prompt)
-    ; Snapshot %logo-base's OWN filein fd -- the interrupted read
+    ; Snapshot (Logo base)'s OWN filein fd -- the interrupted read
     ; poisons THAT base's #90 latch cell, not the session's.
-    (def %lr-fd-cell (%logo-filein-cell))
+    (def %lr-fd-cell (logo-filein-cell))
     (def %lr-fd (%cell-int (first %lr-fd-cell)))
     (def %entry
       (guard (err
@@ -79,7 +81,7 @@
             (do
               (%set-cell-int! %sigint-flag 0)
               (%set-cell-int! (first %lr-fd-cell) %lr-fd)
-              (%logo-entry-flush)
+              (logo-entry-flush)
               (newline)
               %logo-cancel)
             ; ctrl-d mid-entry / truncated pipe: report, clean up, end.
@@ -88,14 +90,14 @@
                        "\n")
               (unless (null? %logo-on-exit) (%logo-on-exit))
               (Sys exit 1))))
-        (%logo-read-entry)))
-    (if (%logo-entry-same? %entry %logo-eof)
+        (logo-read-entry)))
+    (if (logo-entry-same? %entry logo-eof)
       ; Clean EOF: ctrl-d at the prompt, pipe end, AND ctrl-c at the
       ; EMPTY prompt (EINTR -> latch -> stream end with nothing
       ; pending).  Kill the server child, then exit.
       (do (unless (null? %logo-on-exit) (%logo-on-exit))
           (newline) (Sys exit 0))
-      (if (%logo-entry-same? %entry %logo-cancel)
+      (if (logo-entry-same? %entry %logo-cancel)
         (logo-repl)
         (do
           (guard (err
@@ -107,7 +109,7 @@
                            (if (str? err) err (%repl-write-to-str err)) "\n"))))
             ; The entry executes EXACTLY once, here (the old
             ; completeness probe that pre-executed entries is gone).
-            (logo-process-tokens (%logo-indent-to-blocks %entry))
+            (logo-process-tokens (logo-indent-to-blocks %entry))
             (unless (null? %logo-on-command) (%logo-on-command)))
           (logo-repl))))))
 
@@ -141,9 +143,9 @@
         (%stderr "\n")
         (unless (null? %logo-on-exit) (%logo-on-exit))
         (Sys exit 1))
-      (def tokens (%token-read-string %logo-base (Str append content " ")))
-      (logo-process-tokens (%logo-indent-to-blocks tokens))
+      (def tokens (%token-read-string (Logo base) (Str append content " ")))
+      (logo-process-tokens (logo-indent-to-blocks tokens))
       (unless (null? %logo-on-exit) (%logo-on-exit)))))
 
 (provide logo/repl
-  logo-repl logo-batch %logo-on-exit %logo-on-command)
+  logo-batch logo-on-exit! logo-repl)
