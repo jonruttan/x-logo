@@ -51,8 +51,39 @@
 (def %logo-string ())
 (def logo-process-tokens ())
 (def logo-process-to ())
-(def %logo-vars ())
-(def %logo-commands ())
+
+; ============================================================
+; The name tables
+; ============================================================
+
+; Each table is an alist the dispatcher searches by upcased name. They are
+; static fields of one class, so every module that names Logo reads the
+; current table: a selective import of a rebound global would copy the
+; table as it was when imported, before TO added a procedure.
+(def-class Logo ()
+  (static
+    (vars () "Variables, (NAME . value), the innermost binding first")
+    (commands () "Commands, (NAME ARITY HANDLER); an arity of -1 is a special form")
+    (functions () "Functions an expression can call, (NAME ARITY HANDLER), or (NAME HANDLER) for one that takes no arguments")
+
+    (method command (self word) (%logo-alist-find word (self commands)))
+    (method function (self name) (%logo-alist-find name (self functions)))
+
+    ; Rebinds NAME where it is bound, innermost first, else binds it outermost.
+    (method var-set! (self name value)
+      (def uname (Str upcase name))
+      (def %update
+        (fn (walk vars)
+          (match
+            ((null? vars) #f)
+            ((str=? (first (first vars)) uname)
+              ; do-wrap: a match clause evaluates ONE body expr (the arity-0
+              ; dispatch bug's sibling); bare, the #t was dead and the clause
+              ; leaned on %set-rest!'s return value staying truthy.
+              (do (%set-rest! (first vars) value) #t))
+            (#t (walk (rest vars))))))
+      (unless (%update (self vars))
+        (self vars (pair (pair uname value) (self vars)))))))
 
 ; ============================================================
 ; Whitespace type detection
@@ -457,5 +488,5 @@
   %logo-word %logo-word=? %is-block? %block-contents %make-indent-block
   %logo-op-str %is-op? %is-string? %logo-string-val %is-paren?
   %logo-alpha? logo-process-tokens logo-process-to
-  %logo-vars %logo-commands
+  Logo
   %logo-alist-find %cmd-name %cmd-arity %cmd-handler)

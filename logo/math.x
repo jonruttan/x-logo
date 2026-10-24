@@ -36,7 +36,7 @@
 ; Register math functions
 ; ============================================================
 
-(set! %logo-functions
+(Logo functions
   (list
     ; 1-arg math functions
     (list "SQRT"      1 (fn (_ x) (Float sqrt (%as-float x))))
@@ -57,8 +57,8 @@
     ))
 
 ; Constants as variables
-(set! %logo-vars
-  (pair (pair "PI" %logo-pi) %logo-vars))
+(Logo vars
+  (pair (pair "PI" %logo-pi) (Logo vars)))
 
 (provide logo/math
   %logo-rand %lfsr-state)

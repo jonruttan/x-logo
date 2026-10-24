@@ -4,7 +4,7 @@
 ### starts at origin
 
 ```scheme
-(list %turtle-x %turtle-y)
+(list (Turtle x) (Turtle y))
 ```
 ---
     (0.0 0.0)
@@ -12,7 +12,7 @@
 ### starts heading north
 
 ```scheme
-%turtle-heading
+(Turtle heading)
 ```
 ---
     0.0
@@ -20,18 +20,18 @@
 ### pen starts down
 
 ```scheme
-%turtle-pen
+(Turtle pen)
 ```
 ---
     #t
 
-## turtle-forward
+## Turtle forward
 
 ### moves north from origin
 
 ```scheme
-(turtle-forward 100)
-(list %turtle-x %turtle-y)
+(Turtle forward 100)
+(list (Turtle x) (Turtle y))
 ```
 ---
     (0.0 -100.0)
@@ -39,70 +39,70 @@
 ### creates bytecode entries
 
 ```scheme
-(turtle-clearscreen)
-(turtle-forward 50)
-(List length %turtle-bc)
+(Turtle clearscreen)
+(Turtle forward 50)
+(List length (Turtle bc))
 ```
 ---
     2
 
-## turtle-back
+## Turtle back
 
 ### moves south from origin
 
 ```scheme
-(turtle-clearscreen)
-(turtle-back 100)
-(list %turtle-x %turtle-y)
+(Turtle clearscreen)
+(Turtle back 100)
+(list (Turtle x) (Turtle y))
 ```
 ---
     (0.0 100.0)
 
-## turtle-right
+## Turtle right
 
 ### changes heading clockwise
 
 ```scheme
-(turtle-clearscreen)
-(turtle-right 90)
-%turtle-heading
+(Turtle clearscreen)
+(Turtle right 90)
+(Turtle heading)
 ```
 ---
     90.0
 
-## turtle-left
+## Turtle left
 
 ### changes heading counterclockwise
 
 ```scheme
-(turtle-clearscreen)
-(turtle-left 45)
-%turtle-heading
+(Turtle clearscreen)
+(Turtle left 45)
+(Turtle heading)
 ```
 ---
     -45.0
 
-## turtle-penup
+## Turtle penup
 
 ### disables drawing
 
 ```scheme
-(turtle-clearscreen)
-(turtle-penup)
-%turtle-pen
+(Turtle clearscreen)
+(Turtle penup)
+(Turtle pen)
 ```
 ---
     #f
 
-## turtle-pendown
+## Turtle pendown
 
 ### re-enables drawing
 
 ```scheme
-(turtle-clearscreen)
-(turtle-penup)
-(turtle-pendown)
-%turtle-pen
+(Turtle clearscreen)
+(Turtle penup)
+(Turtle pendown)
+(Turtle pen)
 ```
 ---
     #t
@@ -110,23 +110,23 @@
 ### pen-up forward emits U then F bytecodes
 
 ```scheme
-(turtle-clearscreen)
-(turtle-penup)
-(turtle-forward 50)
-(def bc (List reverse %turtle-bc))
+(Turtle clearscreen)
+(Turtle penup)
+(Turtle forward 50)
+(def bc (List reverse (Turtle bc)))
 (first bc)
 ```
 ---
     "U"
 
-## turtle-clearscreen
+## Turtle clearscreen
 
 ### resets position
 
 ```scheme
-(turtle-forward 100)
-(turtle-clearscreen)
-(list %turtle-x %turtle-y)
+(Turtle forward 100)
+(Turtle clearscreen)
+(list (Turtle x) (Turtle y))
 ```
 ---
     (0.0 0.0)
@@ -134,9 +134,9 @@
 ### resets heading
 
 ```scheme
-(turtle-right 90)
-(turtle-clearscreen)
-%turtle-heading
+(Turtle right 90)
+(Turtle clearscreen)
+(Turtle heading)
 ```
 ---
     0.0
@@ -144,9 +144,9 @@
 ### clears segments
 
 ```scheme
-(turtle-forward 100)
-(turtle-clearscreen)
-(List length %turtle-bc)
+(Turtle forward 100)
+(Turtle clearscreen)
+(List length (Turtle bc))
 ```
 ---
     0
@@ -156,7 +156,7 @@
 ### tokenizes uppercase word
 
 ```scheme
-(turtle-clearscreen)
+(Turtle clearscreen)
 (def toks (Tok read-str %logo-base "FD "))
 (Type ? (first toks) %logo)
 ```
@@ -213,10 +213,10 @@
 ### fd creates segment
 
 ```scheme
-(turtle-clearscreen)
+(Turtle clearscreen)
 (def toks (Tok read-str %logo-base "fd 100 "))
 (logo-process-tokens toks)
-(List length %turtle-bc)
+(List length (Turtle bc))
 ```
 ---
     2
@@ -224,10 +224,10 @@
 ### repeat draws square
 
 ```scheme
-(turtle-clearscreen)
+(Turtle clearscreen)
 (def toks (Tok read-str %logo-base "repeat 4 [ fd 100 rt 90 ] "))
 (logo-process-tokens toks)
-(List length %turtle-bc)
+(List length (Turtle bc))
 ```
 ---
     16
@@ -235,10 +235,10 @@
 ### case insensitive lookup
 
 ```scheme
-(turtle-clearscreen)
+(Turtle clearscreen)
 (def toks (Tok read-str %logo-base "Forward 50 "))
 (logo-process-tokens toks)
-(List length %turtle-bc)
+(List length (Turtle bc))
 ```
 ---
     2
@@ -250,16 +250,16 @@ do-wrap its handler call and the recursion -- bare, PU/PD/HOME executed and
 then silently dropped every command after them.
 
 ```scheme
-(turtle-clearscreen)
+(Turtle clearscreen)
 (logo-process-tokens (Tok read-str %logo-base "pu fd 100 pd fd 50 "))
-(List length %turtle-bc)
+(List length (Turtle bc))
 ```
 ---
     6
 
 ### reassignment updates a variable in place
 
-The same one-body-expression rule stalks %logo-var-set!'s update clause: its
+The same one-body-expression rule stalks (Logo var-set!)'s update clause: its
 trailing #t is only reachable through a do-wrap, and without it the update
 leans on %set-rest!'s return value to avoid prepending a duplicate entry.
 
@@ -271,7 +271,7 @@ leans on %set-rest!'s return value to avoid prepending a duplicate entry.
       ((null? vars) 0)
       ((str=? (first (first vars)) "QQ") (+ 1 (self (rest vars))))
       (#t (self (rest vars))))))
-(%qq-count %logo-vars)
+(%qq-count (Logo vars))
 ```
 ---
     1
@@ -281,12 +281,12 @@ leans on %set-rest!'s return value to avoid prepending a duplicate entry.
 ### defines and calls procedure
 
 ```scheme
-(turtle-clearscreen)
+(Turtle clearscreen)
 (def t1 (Tok read-str %logo-base "to sq size [ repeat 4 [ fd size rt 90 ] ] "))
 (logo-process-tokens t1)
 (def t2 (Tok read-str %logo-base "sq 60 "))
 (logo-process-tokens t2)
-(List length %turtle-bc)
+(List length (Turtle bc))
 ```
 ---
     16
@@ -294,12 +294,12 @@ leans on %set-rest!'s return value to avoid prepending a duplicate entry.
 ### multi-parameter procedure
 
 ```scheme
-(turtle-clearscreen)
+(Turtle clearscreen)
 (def t1 (Tok read-str %logo-base "to arcr r deg [ repeat deg [ fd r rt 1 ] ] "))
 (logo-process-tokens t1)
 (def t2 (Tok read-str %logo-base "arcr 1 10 "))
 (logo-process-tokens t2)
-(List length %turtle-bc)
+(List length (Turtle bc))
 ```
 ---
     40
@@ -328,10 +328,10 @@ leans on %set-rest!'s return value to avoid prepending a duplicate entry.
 ### indented repeat draws square
 
 ```scheme
-(turtle-clearscreen)
+(Turtle clearscreen)
 (def toks (Tok read-str %logo-base "\nrepeat 4\n    fd 100\n    rt 90\n "))
 (logo-process-tokens (%logo-indent-to-blocks toks))
-(List length %turtle-bc)
+(List length (Turtle bc))
 ```
 ---
     16
@@ -339,10 +339,10 @@ leans on %set-rest!'s return value to avoid prepending a duplicate entry.
 ### indented THEN body executes
 
 ```scheme
-(turtle-clearscreen)
+(Turtle clearscreen)
 (def toks (Tok read-str %logo-base "\nif 5 > 3 then\n    fd 100\n "))
 (logo-process-tokens (%logo-indent-to-blocks toks))
-(List length %turtle-bc)
+(List length (Turtle bc))
 ```
 ---
     2
@@ -350,10 +350,10 @@ leans on %set-rest!'s return value to avoid prepending a duplicate entry.
 ### indented THEN body skipped when false
 
 ```scheme
-(turtle-clearscreen)
+(Turtle clearscreen)
 (def toks (Tok read-str %logo-base "\nif 5 < 3 then\n    fd 100\n "))
 (logo-process-tokens (%logo-indent-to-blocks toks))
-(List length %turtle-bc)
+(List length (Turtle bc))
 ```
 ---
     0
@@ -361,10 +361,10 @@ leans on %set-rest!'s return value to avoid prepending a duplicate entry.
 ### multi-line indented THEN body
 
 ```scheme
-(turtle-clearscreen)
+(Turtle clearscreen)
 (def toks (Tok read-str %logo-base "\nif 5 > 3 then\n    fd 100\n    rt 90\n    fd 100\n "))
 (logo-process-tokens (%logo-indent-to-blocks toks))
-(List length %turtle-bc)
+(List length (Turtle bc))
 ```
 ---
     6
@@ -372,10 +372,10 @@ leans on %set-rest!'s return value to avoid prepending a duplicate entry.
 ### indented ELSE body executes
 
 ```scheme
-(turtle-clearscreen)
+(Turtle clearscreen)
 (def toks (Tok read-str %logo-base "\nif 5 < 3 then\n    fd 100\nelse\n    bk 50\n "))
 (logo-process-tokens (%logo-indent-to-blocks toks))
-(List length %turtle-bc)
+(List length (Turtle bc))
 ```
 ---
     2
@@ -385,8 +385,8 @@ leans on %set-rest!'s return value to avoid prepending a duplicate entry.
 ### bytecode JSON output
 
 ```scheme
-(turtle-clearscreen)
-(turtle-forward 100)
+(Turtle clearscreen)
+(Turtle forward 100)
 (turtle-bc-str)
 ```
 ---
@@ -397,7 +397,7 @@ leans on %set-rest!'s return value to avoid prepending a duplicate entry.
 ### arithmetic precedence
 
 ```scheme
-(turtle-clearscreen)
+(Turtle clearscreen)
 (def r (%logo-parse-one-expr (Tok read-str %logo-base "2 + 3 * 4 ")))
 (first r)
 ```
@@ -461,8 +461,8 @@ leans on %set-rest!'s return value to avoid prepending a duplicate entry.
 ### variable in expression
 
 ```scheme
-(turtle-clearscreen)
-(%logo-var-set! "X" 10)
+(Turtle clearscreen)
+(Logo var-set! "X" 10)
 (def r (%logo-parse-one-expr (Tok read-str %logo-base "x + 5 ")))
 (first r)
 ```
@@ -483,9 +483,9 @@ leans on %set-rest!'s return value to avoid prepending a duplicate entry.
 ### if then true
 
 ```scheme
-(turtle-clearscreen)
+(Turtle clearscreen)
 (logo-process-tokens (Tok read-str %logo-base "if 5 > 3 then fd 100 "))
-(List length %turtle-bc)
+(List length (Turtle bc))
 ```
 ---
     2
@@ -493,9 +493,9 @@ leans on %set-rest!'s return value to avoid prepending a duplicate entry.
 ### if then false
 
 ```scheme
-(turtle-clearscreen)
+(Turtle clearscreen)
 (logo-process-tokens (Tok read-str %logo-base "if 5 < 3 then fd 100 "))
-(List length %turtle-bc)
+(List length (Turtle bc))
 ```
 ---
     0
@@ -503,9 +503,9 @@ leans on %set-rest!'s return value to avoid prepending a duplicate entry.
 ### if then else true branch
 
 ```scheme
-(turtle-clearscreen)
+(Turtle clearscreen)
 (logo-process-tokens (Tok read-str %logo-base "if 5 > 3 then fd 100 else fd 50 "))
-%turtle-x
+(Turtle x)
 ```
 ---
     0.0
@@ -513,9 +513,9 @@ leans on %set-rest!'s return value to avoid prepending a duplicate entry.
 ### if not
 
 ```scheme
-(turtle-clearscreen)
+(Turtle clearscreen)
 (logo-process-tokens (Tok read-str %logo-base "if not 5 < 3 then fd 100 "))
-(List length %turtle-bc)
+(List length (Turtle bc))
 ```
 ---
     2
@@ -523,10 +523,10 @@ leans on %set-rest!'s return value to avoid prepending a duplicate entry.
 ### stop exits procedure
 
 ```scheme
-(turtle-clearscreen)
+(Turtle clearscreen)
 (logo-process-tokens (Tok read-str %logo-base "to t [ fd 100 stop fd 100 ] "))
 (logo-process-tokens (Tok read-str %logo-base "t "))
-(List length %turtle-bc)
+(List length (Turtle bc))
 ```
 ---
     2
@@ -534,7 +534,7 @@ leans on %set-rest!'s return value to avoid prepending a duplicate entry.
 ### return value from procedure
 
 ```scheme
-(turtle-clearscreen)
+(Turtle clearscreen)
 (logo-process-tokens (Tok read-str %logo-base "to add a b [ return a + b ] "))
 (def r (%logo-parse-one-expr (Tok read-str %logo-base "add(3, 4) ")))
 (first r)
@@ -545,7 +545,7 @@ leans on %set-rest!'s return value to avoid prepending a duplicate entry.
 ### repeat until
 
 ```scheme
-(turtle-clearscreen)
+(Turtle clearscreen)
 (logo-process-tokens (Tok read-str %logo-base "x <- 0 repeat [ x <- x + 1 ] until x > 5 "))
 (def r (%logo-parse-one-expr (Tok read-str %logo-base "x ")))
 (first r)
@@ -558,7 +558,7 @@ leans on %set-rest!'s return value to avoid prepending a duplicate entry.
 ### basic assignment
 
 ```scheme
-(turtle-clearscreen)
+(Turtle clearscreen)
 (logo-process-tokens (Tok read-str %logo-base "x <- 42 "))
 (def r (%logo-parse-one-expr (Tok read-str %logo-base "x ")))
 (first r)
@@ -569,7 +569,7 @@ leans on %set-rest!'s return value to avoid prepending a duplicate entry.
 ### assignment with expression
 
 ```scheme
-(turtle-clearscreen)
+(Turtle clearscreen)
 (logo-process-tokens (Tok read-str %logo-base "x <- 2 + 3 "))
 (def r (%logo-parse-one-expr (Tok read-str %logo-base "x ")))
 (first r)
@@ -627,7 +627,7 @@ leans on %set-rest!'s return value to avoid prepending a duplicate entry.
 ### pi constant
 
 ```scheme
-(turtle-clearscreen)
+(Turtle clearscreen)
 (logo-process-tokens (Tok read-str %logo-base "x <- pi "))
 (def r (%logo-parse-one-expr (Tok read-str %logo-base "x > 3 ")))
 (first r)
@@ -640,9 +640,9 @@ leans on %set-rest!'s return value to avoid prepending a duplicate entry.
 ### setxy
 
 ```scheme
-(turtle-clearscreen)
+(Turtle clearscreen)
 (logo-process-tokens (Tok read-str %logo-base "setxy 100 50 "))
-(list %turtle-x %turtle-y)
+(list (Turtle x) (Turtle y))
 ```
 ---
     (100.0 50.0)
@@ -650,9 +650,9 @@ leans on %set-rest!'s return value to avoid prepending a duplicate entry.
 ### home
 
 ```scheme
-(turtle-clearscreen)
+(Turtle clearscreen)
 (logo-process-tokens (Tok read-str %logo-base "fd 100 home "))
-(list %turtle-x %turtle-y %turtle-heading)
+(list (Turtle x) (Turtle y) (Turtle heading))
 ```
 ---
     (0.0 0.0 0.0)
@@ -660,7 +660,7 @@ leans on %set-rest!'s return value to avoid prepending a duplicate entry.
 ### distance
 
 ```scheme
-(turtle-clearscreen)
+(Turtle clearscreen)
 (logo-process-tokens (Tok read-str %logo-base "setxy 3 4 "))
 (def r (%logo-parse-one-expr (Tok read-str %logo-base "distance(0, 0) ")))
 (first r)
@@ -673,9 +673,9 @@ leans on %set-rest!'s return value to avoid prepending a duplicate entry.
 ### pencolor sets state
 
 ```scheme
-(turtle-clearscreen)
+(Turtle clearscreen)
 (logo-process-tokens (Tok read-str %logo-base "pencolor \"red\" "))
-%turtle-pen-color
+(Turtle pen-color)
 ```
 ---
     "red"
@@ -683,9 +683,9 @@ leans on %set-rest!'s return value to avoid prepending a duplicate entry.
 ### penwidth sets state
 
 ```scheme
-(turtle-clearscreen)
+(Turtle clearscreen)
 (logo-process-tokens (Tok read-str %logo-base "penwidth 3 "))
-%turtle-pen-width
+(Turtle pen-width)
 ```
 ---
     3.0
@@ -695,10 +695,10 @@ leans on %set-rest!'s return value to avoid prepending a duplicate entry.
 ### stop breaks repeat forever
 
 ```scheme
-(turtle-clearscreen)
+(Turtle clearscreen)
 (logo-process-tokens (Tok read-str %logo-base "to limited [ repeat forever [ fd 10 stop ] ] "))
 (logo-process-tokens (Tok read-str %logo-base "limited "))
-(List length %turtle-bc)
+(List length (Turtle bc))
 ```
 ---
     2
@@ -708,7 +708,7 @@ leans on %set-rest!'s return value to avoid prepending a duplicate entry.
 ### two args in parens
 
 ```scheme
-(turtle-clearscreen)
+(Turtle clearscreen)
 (logo-process-tokens (Tok read-str %logo-base "to add a b [ return a + b ] "))
 (def r (%logo-parse-one-expr (Tok read-str %logo-base "add(2 + 3, 10) ")))
 (first r)
@@ -719,7 +719,7 @@ leans on %set-rest!'s return value to avoid prepending a duplicate entry.
 ### three args in parens
 
 ```scheme
-(turtle-clearscreen)
+(Turtle clearscreen)
 (logo-process-tokens (Tok read-str %logo-base "to sum3 a b c [ return a + b + c ] "))
 (def r (%logo-parse-one-expr (Tok read-str %logo-base "sum3(1, 2, 3) ")))
 (first r)
@@ -732,7 +732,7 @@ leans on %set-rest!'s return value to avoid prepending a duplicate entry.
 ### euclid gcd
 
 ```scheme
-(turtle-clearscreen)
+(Turtle clearscreen)
 (logo-process-tokens (Tok read-str %logo-base "to euclid n r [ if n = r then return n if n > r then return euclid(n - r, r) if n < r then return euclid(n, r - n) ] "))
 (def r (%logo-parse-one-expr (Tok read-str %logo-base "euclid(360, 144) ")))
 (first r)
@@ -743,7 +743,7 @@ leans on %set-rest!'s return value to avoid prepending a duplicate entry.
 ### factorial
 
 ```scheme
-(turtle-clearscreen)
+(Turtle clearscreen)
 (logo-process-tokens (Tok read-str %logo-base "to fact n [ if n <= 1 then return 1 return n * fact(n - 1) ] "))
 (def r (%logo-parse-one-expr (Tok read-str %logo-base "fact(6) ")))
 (first r)
@@ -756,9 +756,9 @@ leans on %set-rest!'s return value to avoid prepending a duplicate entry.
 ### else branch executes when false
 
 ```scheme
-(turtle-clearscreen)
+(Turtle clearscreen)
 (logo-process-tokens (Tok read-str %logo-base "if 1 > 5 then fd 100 else fd 50 "))
-%turtle-y
+(Turtle y)
 ```
 ---
     -50.0
@@ -768,9 +768,9 @@ leans on %set-rest!'s return value to avoid prepending a duplicate entry.
 ### execute runs string as logo
 
 ```scheme
-(turtle-clearscreen)
+(Turtle clearscreen)
 (logo-process-tokens (Tok read-str %logo-base "execute \"fd 100\" "))
-(List length %turtle-bc)
+(List length (Turtle bc))
 ```
 ---
     2
@@ -780,7 +780,7 @@ leans on %set-rest!'s return value to avoid prepending a duplicate entry.
 ### member finds element in list
 
 ```scheme
-(turtle-clearscreen)
+(Turtle clearscreen)
 (logo-process-tokens (Tok read-str %logo-base "to test.member [ return member(3, [1 2 3 4]) ] "))
 (def r (%logo-parse-one-expr (Tok read-str %logo-base "test.member() ")))
 (first r)
@@ -791,7 +791,7 @@ leans on %set-rest!'s return value to avoid prepending a duplicate entry.
 ### member returns false for missing
 
 ```scheme
-(turtle-clearscreen)
+(Turtle clearscreen)
 (logo-process-tokens (Tok read-str %logo-base "to test.nomember [ return member(9, [1 2 3]) ] "))
 (def r (%logo-parse-one-expr (Tok read-str %logo-base "test.nomember() ")))
 (first r)
@@ -804,9 +804,9 @@ leans on %set-rest!'s return value to avoid prepending a duplicate entry.
 ### seth sets absolute heading
 
 ```scheme
-(turtle-clearscreen)
+(Turtle clearscreen)
 (logo-process-tokens (Tok read-str %logo-base "seth 180 "))
-%turtle-heading
+(Turtle heading)
 ```
 ---
     180.0
@@ -816,9 +816,9 @@ leans on %set-rest!'s return value to avoid prepending a duplicate entry.
 ### forward emits F bytecode
 
 ```scheme
-(turtle-clearscreen)
-(turtle-forward 100)
-(first (List reverse %turtle-bc))
+(Turtle clearscreen)
+(Turtle forward 100)
+(first (List reverse (Turtle bc)))
 ```
 ---
     "F"
@@ -826,9 +826,9 @@ leans on %set-rest!'s return value to avoid prepending a duplicate entry.
 ### right emits R bytecode
 
 ```scheme
-(turtle-clearscreen)
-(turtle-right 90)
-(first (List reverse %turtle-bc))
+(Turtle clearscreen)
+(Turtle right 90)
+(first (List reverse (Turtle bc)))
 ```
 ---
     "R"
@@ -836,9 +836,9 @@ leans on %set-rest!'s return value to avoid prepending a duplicate entry.
 ### pencolor emits K bytecode
 
 ```scheme
-(turtle-clearscreen)
-(turtle-pencolor "red")
-(first (List reverse %turtle-bc))
+(Turtle clearscreen)
+(Turtle pencolor "red")
+(first (List reverse (Turtle bc)))
 ```
 ---
     "K"
@@ -848,9 +848,9 @@ leans on %set-rest!'s return value to avoid prepending a duplicate entry.
 ### grow scales s.forward
 
 ```scheme
-(turtle-clearscreen)
+(Turtle clearscreen)
 (logo-process-tokens (Tok read-str %logo-base "grow 2 s.fd 50 "))
-%turtle-y
+(Turtle y)
 ```
 ---
     -100.0
@@ -863,7 +863,7 @@ segfault the engine; the %as-float/%as-int doors in state.x raise instead.
 ### a bracket block in a numeric slot raises type, not a crash
 
 ```scheme
-(turtle-clearscreen)
+(Turtle clearscreen)
 (logo-process-tokens (Tok read-str %logo-base "fd [ 1 2 ] "))
 ```
 ---
@@ -872,7 +872,7 @@ segfault the engine; the %as-float/%as-int doors in state.x raise instead.
 ### an indent block in a numeric slot raises type, not a crash
 
 ```scheme
-(turtle-clearscreen)
+(Turtle clearscreen)
 (def toks (Tok read-str %logo-base "\nfd\n    xcor\n "))
 (logo-process-tokens (%logo-indent-to-blocks toks))
 ```
@@ -882,9 +882,9 @@ segfault the engine; the %as-float/%as-int doors in state.x raise instead.
 ### a string distance still coerces
 
 ```scheme
-(turtle-clearscreen)
+(Turtle clearscreen)
 (logo-process-tokens (Tok read-str %logo-base "fd \"50\" "))
-%turtle-y
+(Turtle y)
 ```
 ---
     -50.0
@@ -892,7 +892,7 @@ segfault the engine; the %as-float/%as-int doors in state.x raise instead.
 ### a non-numeric repeat count raises type
 
 ```scheme
-(turtle-clearscreen)
+(Turtle clearscreen)
 (logo-process-tokens (Tok read-str %logo-base "repeat \"x\" [ fd 100 ] "))
 ```
 ---
@@ -901,9 +901,9 @@ segfault the engine; the %as-float/%as-int doors in state.x raise instead.
 ### a string repeat count coerces
 
 ```scheme
-(turtle-clearscreen)
+(Turtle clearscreen)
 (logo-process-tokens (Tok read-str %logo-base "repeat \"3\" [ fd 1 ] "))
-%turtle-y
+(Turtle y)
 ```
 ---
     -3.0
