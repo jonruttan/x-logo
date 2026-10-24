@@ -8,18 +8,6 @@
 (def %logo-float-type (Type named FLOAT))
 (def %logo-pi (Float pi))
 
-; ============================================================
-; State
-; ============================================================
-
-(def %turtle-x (Float from 0))
-(def %turtle-y (Float from 0))
-(def %turtle-heading (Float from 0))
-(def %turtle-pen #t)
-(def %turtle-pen-color "#222")
-(def %turtle-pen-width (Float from 1))
-(def %turtle-bc ())    ; bytecode list (reversed, newest first)
-
 (def %deg->rad
   (fn (_ deg) (Float / (Float * (%as-float deg) %logo-pi) (Float from 180))))
 
@@ -43,89 +31,112 @@
               (Err raise 'type "Logo: expected a number" n)))))))
 
 ; ============================================================
-; Bytecode emission
+; The turtle
 ; ============================================================
 
-; Hook called after each bytecode entry — set by server
-(def %turtle-on-bc ())
+; The turtle's state lives in the static fields of one class, so every module
+; that names Turtle reads the current value. A rebound global would not do:
+; a selective import copies the value the global had when it was imported.
+(def-class Turtle ()
+  (static
+    (x () "Position east of the origin, a FLOAT")
+    (y () "Position south of the origin, a FLOAT: a move north decreases it")
+    (heading () "Degrees clockwise from north, a FLOAT")
+    (pen () "#t while the pen is down")
+    (pen-color () "The pen colour, a CSS colour string")
+    (pen-width () "The pen width, a FLOAT")
+    (bc () "The bytecode emitted since the last clearscreen, newest first")
+    (visible #t "#t while the turtle is shown")
+    (scale () "The factor S.FORWARD multiplies its distance by, a FLOAT")
+    (on-bc () "Called with each emitted opcode and its arguments; set by logo/main")
+    (on-clear () "Called after clearscreen; set by logo/main")
 
-; Emit opcode with no args
-(def %bc-emit-0
-  (fn (_ op)
-    (set! %turtle-bc (pair op %turtle-bc))
-    (unless (null? %turtle-on-bc) (%turtle-on-bc op))))
+    ; Prepends op and then its arguments, so the list read in reverse is the
+    ; bytecode in the order emitted.
+    (method emit (self op . args)
+      (self bc (List append (List reverse args) (pair op (self bc))))
+      (unless (null? (self on-bc)) (apply (self on-bc) (pair op args))))
 
-; Emit opcode with one float arg
-(def %bc-emit-1
-  (fn (_ op val)
-    (set! %turtle-bc (pair val (pair op %turtle-bc)))
-    (unless (null? %turtle-on-bc) (%turtle-on-bc op val))))
+    (method forward (self n)
+      (def dist (%as-float n))
+      (self emit "F" dist)
+      (def rad (%deg->rad (self heading)))
+      (self x (Float + (self x) (Float * dist (Float sin rad))))
+      (self y (Float - (self y) (Float * dist (Float cos rad)))))
 
-; Emit opcode with two float args
-(def %bc-emit-2
-  (fn (_ op a b)
-    (set! %turtle-bc (pair b (pair a (pair op %turtle-bc))))
-    (unless (null? %turtle-on-bc) (%turtle-on-bc op a b))))
+    (method back (self n) (self forward (- n)))
 
-; ============================================================
-; Movement
-; ============================================================
+    (method right (self n)
+      (def deg (%as-float n))
+      (self heading (Float + (self heading) deg))
+      (self emit "R" deg))
 
-(def turtle-forward
-  (fn (_ n)
-    (def dist (%as-float n))
-    (%bc-emit-1 "F" dist)
-    (def rad (%deg->rad %turtle-heading))
-    (set! %turtle-x (Float + %turtle-x (Float * dist (Float sin rad))))
-    (set! %turtle-y (Float - %turtle-y (Float * dist (Float cos rad))))))
+    (method left (self n)
+      (def deg (%as-float n))
+      (self heading (Float - (self heading) deg))
+      (self emit "L" deg))
 
-(def turtle-back
-  (fn (_ n) (turtle-forward (- n))))
+    (method penup (self) (self pen #f) (self emit "U"))
+    (method pendown (self) (self pen #t) (self emit "D"))
 
-(def turtle-right
-  (fn (_ n)
-    (def deg (%as-float n))
-    (set! %turtle-heading (Float + %turtle-heading deg))
-    (%bc-emit-1 "R" deg)))
+    (method pencolor (self color)
+      (self pen-color color)
+      (self emit "K" color))
 
-(def turtle-left
-  (fn (_ n)
-    (def deg (%as-float n))
-    (set! %turtle-heading (Float - %turtle-heading deg))
-    (%bc-emit-1 "L" deg)))
+    (method penwidth (self width)
+      (self pen-width (%as-float width))
+      (self emit "W" (%as-float width)))
 
-(def turtle-penup   (fn () (set! %turtle-pen #f) (%bc-emit-0 "U")))
-(def turtle-pendown (fn () (set! %turtle-pen #t) (%bc-emit-0 "D")))
+    (method setheading (self n)
+      (self heading (%as-float n))
+      (self emit "H" (%as-float n)))
 
-(def turtle-pencolor
-  (fn (_ color)
-    (set! %turtle-pen-color color)
-    (%bc-emit-1 "K" color)))
+    (method setxy (self px py)
+      (def nx (%as-float px))
+      (def ny (%as-float py))
+      (self emit "M" nx ny)
+      (self x nx)
+      (self y ny))
 
-(def turtle-penwidth
-  (fn (_ width)
-    (set! %turtle-pen-width (%as-float width))
-    (%bc-emit-1 "W" (%as-float width))))
+    (method home (self)
+      (self emit "O")
+      (self x (Float from 0))
+      (self y (Float from 0))
+      (self heading (Float from 0)))
 
-(def %turtle-on-clear ())
+    (method distance (self px py)
+      (def dx (Float - (%as-float px) (self x)))
+      (def dy (Float - (%as-float py) (self y)))
+      (Float sqrt (Float + (Float * dx dx) (Float * dy dy))))
 
-(def turtle-clearscreen
-  (fn ()
-    (set! %turtle-x (Float from 0))
-    (set! %turtle-y (Float from 0))
-    (set! %turtle-heading (Float from 0))
-    (set! %turtle-pen #t)
-    (set! %turtle-pen-color "#222")
-    (set! %turtle-pen-width (Float from 1))
-    (set! %turtle-bc ())
-    (unless (null? %turtle-on-clear) (%turtle-on-clear))))
+    (method towards (self px py)
+      (def dx (Float - (%as-float px) (self x)))
+      (def dy (Float - (self y) (%as-float py)))
+      (Float / (Float * (Float atan2 dx dy) (Float from 180)) %logo-pi))
+
+    ; TURTLE.STATE and SETTURTLE: position, heading and pen as one list.
+    (method state (self)
+      (list (self x) (self y) (self heading) (self pen)))
+
+    (method setturtle (self lst)
+      (self x (first lst))
+      (self y (first (rest lst)))
+      (self heading (first (rest (rest lst))))
+      (self pen (first (rest (rest (rest lst))))))
+
+    (method clearscreen (self)
+      (self x (Float from 0))
+      (self y (Float from 0))
+      (self heading (Float from 0))
+      (self pen #t)
+      (self pen-color "#222")
+      (self pen-width (Float from 1))
+      (self bc ())
+      (unless (null? (self on-clear)) ((self on-clear))))))
+
+; The starting state is the cleared one; the scale is not reset by a clear.
+(Turtle clearscreen)
+(Turtle scale (Float from 1))
 
 
-(provide logo/state
-  %turtle-x %turtle-y %turtle-heading %turtle-pen %turtle-bc
-  %as-float %as-int
-  turtle-forward turtle-back turtle-right turtle-left
-  turtle-penup turtle-pendown turtle-pencolor turtle-penwidth
-  turtle-clearscreen
-  %turtle-on-bc %turtle-on-clear
-  %bc-emit-0 %bc-emit-1 %bc-emit-2)
+(provide logo/state Turtle %as-float %as-int)

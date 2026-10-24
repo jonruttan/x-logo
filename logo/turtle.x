@@ -20,13 +20,9 @@
 (provide logo/turtle
   logo-version
   ; state
-  turtle-forward turtle-back turtle-right turtle-left
-  turtle-penup turtle-pendown turtle-clearscreen
-  %turtle-on-bc %turtle-on-clear %turtle-bc
+  Turtle
   ; types
-  %logo-base %logo
-  ; expr
-  %logo-functions
+  %logo-base %logo Logo
   ; dispatch
   logo-process-tokens
   ; indent

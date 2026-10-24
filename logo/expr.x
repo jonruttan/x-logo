@@ -10,18 +10,6 @@
 
 
 ; ============================================================
-; Function registry (SQRT, ABS, SIN, COS, etc.)
-; ============================================================
-
-(def %logo-functions ())
-
-(def %logo-fn-lookup
-  (fn (_ name) (%logo-alist-find name %logo-functions)))
-
-(def %logo-lookup
-  (fn (_ word) (%logo-alist-find word %logo-commands)))
-
-; ============================================================
 ; Operator helpers
 ; ============================================================
 
@@ -88,10 +76,10 @@
   (fn (_ word tokens-after-paren)
     (let ((args-result (%logo-parse-fn-args tokens-after-paren)))
       (def args (first args-result))
-      (def fn-entry (%logo-fn-lookup word))
+      (def fn-entry (Logo function word))
       (if (not (null? fn-entry))
         (pair (apply (%cmd-handler fn-entry) args) (rest args-result))
-        (let ((cmd (%logo-lookup word)))
+        (let ((cmd (Logo command word)))
           (if (null? cmd)
             (Err raise 'value (Str append "Unknown function: " word) ())
             (pair (apply (%cmd-handler cmd) args) (rest args-result))))))))
@@ -100,12 +88,12 @@
   (fn (_ word rest-t)
     ; Assoc find compares with equal? (content compare covers strings); the
     ; extra comparator arg an older signature took is gone
-    (let ((var (Assoc find word %logo-vars)))
+    (let ((var (Assoc find word (Logo vars))))
       (if (not (null? var)) (pair (rest var) rest-t)
-        (let ((fn-entry (%logo-fn-lookup word)))
+        (let ((fn-entry (Logo function word)))
           (if (and (not (null? fn-entry)) (null? (rest (rest fn-entry))))
             (pair ((first (rest fn-entry))) rest-t)
-            (let ((cmd (%logo-lookup word)))
+            (let ((cmd (Logo command word)))
               (if (and (not (null? cmd)) (= (%cmd-arity cmd) 0))
                 (pair ((%cmd-handler cmd)) rest-t)
                 (Err raise 'value (Str append "Undefined: " word) ())))))))))
@@ -189,5 +177,4 @@
 
 (provide logo/expr
   %logo-parse-expr %logo-parse-one-expr
-  %logo-functions %logo-fn-lookup %logo-lookup
   %logo-resolve-word %is-op-str?)

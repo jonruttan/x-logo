@@ -67,8 +67,8 @@
       ())))
 
 ; --- Hooks: append bytecodes, clear file on clearscreen ---
-(set! %turtle-on-bc %bc-append)
-(set! %turtle-on-clear %bc-clear)
+(Turtle on-bc %bc-append)
+(Turtle on-clear %bc-clear)
 
 ; RE-EXPORTED, so the entry imports ONE thing.  logo-repl and logo-batch are
 ; logo/repl's, reached here through logo/turtle; run.x wants the language and

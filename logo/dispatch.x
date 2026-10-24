@@ -31,25 +31,25 @@
 ; Command table
 ; ============================================================
 
-(set! %logo-commands
+(Logo commands
   (list
-    (list "FORWARD" 1 (fn (_ n) (turtle-forward n)))
-    (list "FD"      1 (fn (_ n) (turtle-forward n)))
-    (list "BACK"    1 (fn (_ n) (turtle-back n)))
-    (list "BK"      1 (fn (_ n) (turtle-back n)))
-    (list "RIGHT"   1 (fn (_ n) (turtle-right n)))
-    (list "RT"      1 (fn (_ n) (turtle-right n)))
-    (list "LEFT"    1 (fn (_ n) (turtle-left n)))
-    (list "LT"      1 (fn (_ n) (turtle-left n)))
-    (list "PENUP"   0 (fn () (turtle-penup)))
-    (list "PU"      0 (fn () (turtle-penup)))
-    (list "PENDOWN" 0 (fn () (turtle-pendown)))
-    (list "PD"      0 (fn () (turtle-pendown)))
-    (list "CLEARSCREEN" 0 (fn () (turtle-clearscreen)))
-    (list "CS"      0 (fn () (turtle-clearscreen)))
-    (list "HEADING" 0 (fn () %turtle-heading))
-    (list "XCOR"    0 (fn () %turtle-x))
-    (list "YCOR"    0 (fn () %turtle-y))
+    (list "FORWARD" 1 (fn (_ n) (Turtle forward n)))
+    (list "FD"      1 (fn (_ n) (Turtle forward n)))
+    (list "BACK"    1 (fn (_ n) (Turtle back n)))
+    (list "BK"      1 (fn (_ n) (Turtle back n)))
+    (list "RIGHT"   1 (fn (_ n) (Turtle right n)))
+    (list "RT"      1 (fn (_ n) (Turtle right n)))
+    (list "LEFT"    1 (fn (_ n) (Turtle left n)))
+    (list "LT"      1 (fn (_ n) (Turtle left n)))
+    (list "PENUP"   0 (fn () (Turtle penup)))
+    (list "PU"      0 (fn () (Turtle penup)))
+    (list "PENDOWN" 0 (fn () (Turtle pendown)))
+    (list "PD"      0 (fn () (Turtle pendown)))
+    (list "CLEARSCREEN" 0 (fn () (Turtle clearscreen)))
+    (list "CS"      0 (fn () (Turtle clearscreen)))
+    (list "HEADING" 0 (fn () (Turtle heading)))
+    (list "XCOR"    0 (fn () (Turtle x)))
+    (list "YCOR"    0 (fn () (Turtle y)))
     (list "REPEAT"  -1 ())
     (list "TO"      -1 ())
     (list "IF"      -1 ())
@@ -59,26 +59,6 @@
     (list "TYPE"    -1 ())
     (list "EXECUTE" -1 ())
     (list "LOAD"    -1 ())))
-
-; ============================================================
-; Variable management
-; ============================================================
-
-(def %logo-var-set!
-  (fn (_ name value)
-    (def uname (Str upcase name))
-    (def %update
-      (fn (self vars)
-        (match
-          ((null? vars) #f)
-          ((str=? (first (first vars)) uname)
-            ; do-wrap: a match clause evaluates ONE body expr (the arity-0
-            ; dispatch bug's sibling); bare, the #t was dead and the clause
-            ; leaned on %set-rest!'s return value staying truthy.
-            (do (%set-rest! (first vars) value) #t))
-          (#t (self (rest vars))))))
-    (unless (%update %logo-vars)
-      (set! %logo-vars (pair (pair uname value) %logo-vars)))))
 
 ; ============================================================
 ; STOP / RETURN sentinel labels
@@ -219,14 +199,14 @@
           ((and (not (null? remaining))
                 (%is-op-str? (first remaining) "<-"))
             (let ((r (%logo-consume-arg (rest remaining))))
-              (%logo-var-set! word (first r))
+              (Logo var-set! word (first r))
               (logo-process-tokens (rest r))))
           (#t
             (%logo-dispatch word remaining)))))))
 
 (set! %logo-dispatch
   (fn (_ word remaining)
-    (def entry (%logo-lookup word))
+    (def entry (Logo command word))
     (if (null? entry)
       (logo-process-tokens remaining)
       (let ((arity (%cmd-arity entry))
@@ -340,7 +320,7 @@
           ((%is-block? tok) (pair (list tok) rest-t))
           ((null? word)     (pair (list tok) rest-t))
           (#t
-            (let ((entry (%logo-lookup word)))
+            (let ((entry (Logo command word)))
               (if (null? entry) (pair (list tok) rest-t)
                 (let ((arity (%cmd-arity entry)))
                   (match
@@ -449,18 +429,18 @@
         (def n-params (List length param-names))
         (def proc
           (fn (_ . logo-args)
-            (def saved-vars %logo-vars)
+            (def saved-vars (Logo vars))
             (def %push
               (fn (self names vals)
                 (unless (null? names)
                   (do
-                    (set! %logo-vars
-                      (pair (pair (first names) (first vals)) %logo-vars))
+                    (Logo vars
+                      (pair (pair (first names) (first vals)) (Logo vars)))
                     (self (rest names) (rest vals))))))
             (%push param-names logo-args)
             (def result
               (guard (err
-                  (set! %logo-vars saved-vars)
+                  (Logo vars saved-vars)
                   (match
                     ((%is-stop? err) ())
                     ((%is-return? err) (rest err))
@@ -468,13 +448,12 @@
                     (#t (error err))))
                 (logo-process-tokens (%block-contents body))
                 ()))
-            (set! %logo-vars saved-vars)
+            (Logo vars saved-vars)
             result))
-        (set! %logo-commands
-          (pair (list name n-params proc) %logo-commands))
+        (Logo commands
+          (pair (list name n-params proc) (Logo commands)))
         (logo-process-tokens remaining)))))
 
 (provide logo/dispatch
-  %logo-commands %logo-lookup %logo-vars %logo-var-set!
   logo-process-tokens logo-process-to
   %logo-stop-label %logo-return-label)
