@@ -1,0 +1,51 @@
+#!/usr/bin/expect -f
+# When the viewer cannot bind :8080, the server child reports it and exits;
+# the session goes on with one REPL and exits cleanly.  Before the child's
+# errors were caught, the bind failure unwound out of the fork arm and the
+# child ran the rest of run.x: a second REPL on the same terminal.
+source [file join [file dirname [info script]] lib.exp]
+if {[port_8080_busy]} { puts "SKIP-as-pass: :8080 busy before spawn"; exit 0 }
+# Hold the port.  IPv4 on every interface, the address the viewer binds.
+proc refuse {chan addr port} { close $chan }
+if {[catch {socket -server refuse -myaddr 0.0.0.0 8080} holder]} {
+    puts "FAIL: could not hold :8080: $holder"
+    exit 1
+}
+spawn_logo_session
+# The child's report and the parent's prompt race; take them in either order.
+set saw_report 0
+set saw_prompt 0
+expect {
+    "viewer: not started" {
+        set saw_report 1
+        if {!$saw_prompt} { exp_continue }
+    }
+    -re {\? } {
+        set saw_prompt 1
+        if {!$saw_report} { exp_continue }
+    }
+    timeout {
+        puts "FAIL: report=$saw_report prompt=$saw_prompt"
+        kill_session_tree
+        exit 1
+    }
+    eof { puts "FAIL: died at spawn"; exit 1 }
+}
+assert_alive 7 6 13
+ctrl_d
+expect {
+    eof {}
+    timeout { puts "FAIL: still alive after ctrl-d"; kill_session_tree; exit 1 }
+}
+catch {wait} result
+if {![exited_zero $result]} { puts "FAIL: not a clean exit 0: $result"; exit 1 }
+close $holder
+# Nothing of the session may outlive it: the child exited when the bind
+# failed, so the process group empties with the session leader.
+for {set i 0} {$i < 25} {incr i} {
+    if {[catch {exec kill -0 -- "-$spawn_pid"}]} { exit 0 }
+    after 200
+}
+puts "FAIL: the session's process group outlived it"
+kill_session_tree
+exit 1
