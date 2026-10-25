@@ -1,11 +1,14 @@
 ; dispatch.x -- Logo command dispatch and interpreter
-(import logo/state)
+(module logo/dispatch)
+(import logo/state as-int)
+(import logo/types
+  block-contents cmd-arity cmd-handler is-block? is-paren? is-string?
+  logo-word logo-word=?)
+(import logo/expr is-op-str? logo-parse-expr logo-parse-one-expr op-precedence)
+(import logo/indent logo-indent-to-blocks)
 ; Fetch the tokenizer prims from the catalog (ns `buf`/`tok` are de-registered, R5).
 (def %token-read-string (prim-ref 'tok 'read-str))
 
-(import logo/types)
-(import logo/expr)
-(import logo/indent)
 (import x/sys/posix)
 (import x/sys/file)
 ; Fetch the ptr/ffi prims from the catalog (ns `ptr`/`ffi` are de-registered, R5).
@@ -16,8 +19,6 @@
 (def %dlsym (prim-ref 'ffi 'dlsym))
 ; Fetch the char/int casts from the catalog (ns `char`/`int` utility members de-registered, R5).
 (def %int->ptr (prim-ref 'int '->ptr))
-
-
 
 ; ============================================================
 ; File reader (uses read-char with stdin redirection)
@@ -75,15 +76,15 @@
 ; ============================================================
 
 (def %logo-consume-arg
-  (fn (_ tokens) (%logo-parse-one-expr tokens)))
+  (fn (_ tokens) (logo-parse-one-expr tokens)))
 
 ; Skip commas and closing parens between args (for grouped arg syntax)
 (def %skip-separators
   (fn (self toks)
     (if (null? toks) toks
-      (if (%is-op-str? (first toks) ",")
+      (if (is-op-str? (first toks) ",")
         (self (rest toks))
-        (if (%is-paren? (first toks) ")")
+        (if (is-paren? (first toks) ")")
           (self (rest toks))
           toks)))))
 
@@ -125,18 +126,18 @@
           (match
             ((number? tok) rest-t)
             ((Float float? tok)  rest-t)
-            ((%is-string? tok) rest-t)
-            ((%is-block? tok)  rest-t)
-            ((%is-paren? tok "(") (%skip-parens rest-t 1))
-            ((%is-op-str? tok "-") (%skip-one-expr rest-t))
+            ((is-string? tok) rest-t)
+            ((is-block? tok)  rest-t)
+            ((is-paren? tok "(") (%skip-parens rest-t 1))
+            ((is-op-str? tok "-") (%skip-one-expr rest-t))
             (#t
               ; Word — check for fn call: word(args)
-              (if (and (not (null? rest-t)) (%is-paren? (first rest-t) "("))
+              (if (and (not (null? rest-t)) (is-paren? (first rest-t) "("))
                 (%skip-parens (rest rest-t) 1)
                 rest-t))))
         ; Skip trailing infix operators
         (if (and (not (null? after-primary))
-                 (> (%op-precedence (first after-primary)) 0))
+                 (> (op-precedence (first after-primary)) 0))
           (%skip-one-expr (rest after-primary))
           after-primary)))))
 
@@ -146,8 +147,8 @@
     (if (null? tokens) tokens
       (if (= depth 0) tokens
         (match
-          ((%is-paren? (first tokens) "(") (%skip-parens (rest tokens) (+ depth 1)))
-          ((%is-paren? (first tokens) ")") (%skip-parens (rest tokens) (- depth 1)))
+          ((is-paren? (first tokens) "(") (%skip-parens (rest tokens) (+ depth 1)))
+          ((is-paren? (first tokens) ")") (%skip-parens (rest tokens) (- depth 1)))
           (#t (%skip-parens (rest tokens) depth)))))))
 
 ; Consume word + one expression worth of tokens (no evaluation)
@@ -182,22 +183,22 @@
 ; Main dispatcher
 ; ============================================================
 
-(set! logo-process-tokens
+(def logo-process-tokens
   (fn (_ tokens)
     (unless (null? tokens)
       (let ((tok (first tokens))
             (remaining (rest tokens)))
-        (def word (%logo-word tok))
+        (def word (logo-word tok))
         (match
           ; A block at statement position runs its contents (matches the
           ; LOGO-BLOCK 'eval handler); must precede the nil-word skip.
-          ((%is-block? tok)
-            (do (logo-process-tokens (%block-contents tok))
+          ((is-block? tok)
+            (do (logo-process-tokens (block-contents tok))
                 (logo-process-tokens remaining)))
           ((null? word)
             (logo-process-tokens remaining))
           ((and (not (null? remaining))
-                (%is-op-str? (first remaining) "<-"))
+                (is-op-str? (first remaining) "<-"))
             (let ((r (%logo-consume-arg (rest remaining))))
               (Logo var-set! word (first r))
               (logo-process-tokens (rest r))))
@@ -209,8 +210,8 @@
     (def entry (Logo command word))
     (if (null? entry)
       (logo-process-tokens remaining)
-      (let ((arity (%cmd-arity entry))
-            (handler (%cmd-handler entry)))
+      (let ((arity (cmd-arity entry))
+            (handler (cmd-handler entry)))
         (match
           ((= arity 0)
             (do (handler)
@@ -245,14 +246,14 @@
         (let ((r (%logo-consume-arg remaining)))
           (def code (first r))
           (logo-process-tokens
-            (%token-read-string %logo-base (Str append code " ")))
+            (%token-read-string (Logo base) (Str append code " ")))
           (logo-process-tokens (rest r))))
       ((str=? uword "LOAD")
         (let ((r (%logo-consume-arg remaining)))
           (def filename (first r))
           (def content (%logo-read-file filename))
-          (def tokens (%token-read-string %logo-base (Str append content " ")))
-          (logo-process-tokens (%logo-indent-to-blocks tokens))
+          (def tokens (%token-read-string (Logo base) (Str append content " ")))
+          (logo-process-tokens (logo-indent-to-blocks tokens))
           (logo-process-tokens (rest r))))
       (#t (Err raise 'value (Str append "Unknown special: " uword) ())))))
 
@@ -263,7 +264,7 @@
 (set! %logo-do-repeat
   (fn (_ tokens)
     (if (null? tokens) (Err raise 'value "REPEAT: expected arguments" ())
-      (if (%logo-word=? (first tokens) "FOREVER")
+      (if (logo-word=? (first tokens) "FOREVER")
         ; REPEAT FOREVER [block]
         (let ((r (%logo-consume-arg (rest tokens))))
           (def block (first r))
@@ -271,37 +272,37 @@
             (fn (self)
               (guard (err
                   (unless (%is-stop? err) (error err)))
-                (logo-process-tokens (%block-contents block))
+                (logo-process-tokens (block-contents block))
                 (self))))
           (%loop)
           (logo-process-tokens (rest r)))
         ; REPEAT count [block] or REPEAT [block] UNTIL cond
         (let ((r1 (%logo-consume-arg tokens)))
-          (if (%is-block? (first r1))
+          (if (is-block? (first r1))
             ; REPEAT [block] UNTIL cond
             (let ((block (first r1))
                   (after-block (rest r1)))
-              (if (not (%logo-word=? (first after-block) "UNTIL"))
+              (if (not (logo-word=? (first after-block) "UNTIL"))
                 (Err raise 'value "REPEAT: expected UNTIL after block" ())
                 (let ((cond-tokens (rest after-block)))
                   (def %loop
                     (fn (self)
                       (guard (err
                           (unless (%is-stop? err) (error err)))
-                        (logo-process-tokens (%block-contents block))
-                        (let ((cr (%logo-parse-expr cond-tokens)))
+                        (logo-process-tokens (block-contents block))
+                        (let ((cr (logo-parse-expr cond-tokens)))
                           (if (first cr)
                             (logo-process-tokens (rest cr))
                             (self))))))
                   (%loop))))
             ; REPEAT count [block]
             (let ((r2 (%logo-consume-arg (rest r1))))
-              (def count (%as-int (first r1)))
+              (def count (as-int (first r1)))
               (def block (first r2))
               (def %rep
                 (fn (self i)
                   (when (> i 0)
-                    (do (logo-process-tokens (%block-contents block))
+                    (do (logo-process-tokens (block-contents block))
                         (self (- i 1))))))
               (%rep count)
               (logo-process-tokens (rest r2)))))))))
@@ -315,14 +316,14 @@
     (if (null? tokens) (pair () ())
       (let ((tok (first tokens))
             (rest-t (rest tokens))
-            (word (%logo-word (first tokens))))
+            (word (logo-word (first tokens))))
         (match
-          ((%is-block? tok) (pair (list tok) rest-t))
+          ((is-block? tok) (pair (list tok) rest-t))
           ((null? word)     (pair (list tok) rest-t))
           (#t
             (let ((entry (Logo command word)))
               (if (null? entry) (pair (list tok) rest-t)
-                (let ((arity (%cmd-arity entry)))
+                (let ((arity (cmd-arity entry)))
                   (match
                     ((= arity 0)  (pair (list tok) rest-t))
                     ((>= arity 1) (%consume-word-and-expr tok rest-t))
@@ -343,22 +344,22 @@
 ; Returns (test-value . remaining-tokens-after-condition)
 (def %parse-if-condition
   (fn (_ tokens)
-    (def first-word (%logo-word (first tokens)))
+    (def first-word (logo-word (first tokens)))
     (def has-not (and (not (null? first-word))
                       (str=? (Str upcase first-word) "NOT")))
     (def has-either (and (not (null? first-word))
                          (str=? (Str upcase first-word) "EITHER")))
     (def cond-tokens
       (if (or has-not has-either) (rest tokens) tokens))
-    (def cond-result (%logo-parse-expr cond-tokens))
+    (def cond-result (logo-parse-expr cond-tokens))
     (def cond-val (first cond-result))
     (def after-cond (rest cond-result))
     ; EITHER: parse second condition after comma
     (def final-cond
       (if has-either
         (if (and (not (null? after-cond))
-                 (%is-op-str? (first after-cond) ","))
-          (let ((r2 (%logo-parse-expr (rest after-cond))))
+                 (is-op-str? (first after-cond) ","))
+          (let ((r2 (logo-parse-expr (rest after-cond))))
             (set! after-cond (rest r2))
             (or cond-val (first r2)))
           cond-val)
@@ -371,7 +372,7 @@
 (def %parse-then-else
   (fn (_ test-val after-cond)
     (if (null? after-cond) (Err raise 'value "IF: expected THEN" ()))
-    (if (not (%logo-word=? (first after-cond) "THEN"))
+    (if (not (logo-word=? (first after-cond) "THEN"))
       (Err raise 'value "IF: expected THEN" ()))
     (def after-then (rest after-cond))
     (def then-cmd (%consume-one-command after-then))
@@ -379,7 +380,7 @@
     (def after-then-cmd (rest then-cmd))
     (def has-else
       (and (not (null? after-then-cmd))
-           (%logo-word=? (first after-then-cmd) "ELSE")))
+           (logo-word=? (first after-then-cmd) "ELSE")))
     (def else-cmd
       (if has-else
         (%consume-one-command (rest after-then-cmd))
@@ -404,22 +405,22 @@
 ; TO procedure definition
 ; ============================================================
 
-(set! logo-process-to
+(def logo-process-to
   (fn (_ tokens)
     (if (null? tokens) (Err raise 'value "TO: expected name" ())
       (let ((name-tok (first tokens))
             (rest-toks (rest tokens)))
-        (def name (Str upcase (%logo-word name-tok)))
+        (def name (Str upcase (logo-word name-tok)))
         (def %read-params
           (fn (self params toks)
             (if (null? toks) (Err raise 'value "TO: expected [ body ]" ())
               (let ((tok (first toks)))
                 (match
-                  ((%is-block? tok) (list params tok (rest toks)))
-                  ((%is-paren? tok "(") (self params (rest toks)))
-                  ((%is-paren? tok ")") (self params (rest toks)))
-                  ((%is-op-str? tok ",") (self params (rest toks)))
-                  (#t (self (pair (%logo-word tok) params) (rest toks))))))))
+                  ((is-block? tok) (list params tok (rest toks)))
+                  ((is-paren? tok "(") (self params (rest toks)))
+                  ((is-paren? tok ")") (self params (rest toks)))
+                  ((is-op-str? tok ",") (self params (rest toks)))
+                  (#t (self (pair (logo-word tok) params) (rest toks))))))))
         (def result (%read-params () rest-toks))
         ; Upcase param names once at definition time
         (def param-names
@@ -446,7 +447,7 @@
                     ((%is-return? err) (rest err))
                     ((Err stop? err) ())
                     (#t (error err))))
-                (logo-process-tokens (%block-contents body))
+                (logo-process-tokens (block-contents body))
                 ()))
             (Logo vars saved-vars)
             result))
@@ -455,5 +456,4 @@
         (logo-process-tokens remaining)))))
 
 (provide logo/dispatch
-  logo-process-tokens logo-process-to
-  %logo-stop-label %logo-return-label)
+  logo-process-to logo-process-tokens)

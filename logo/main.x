@@ -12,16 +12,18 @@
 ; would resolve against the user's cwd; `import` is the only addressing that
 ; works, and it needs a (provide ...). Nothing arms a module root here -- x.sh
 ; did that from lang.xon before run.x was read.
+(module logo/main)
+(import logo/repl logo-on-exit!)
+(import logo/serve bc-append bc-clear bc-write turtle-serve)
+(import logo/state)
+(import logo/turtle)
 (def %bigint ())
 (import x/num/float)
-(import logo/turtle)
 (import x/sys/posix)
-(import logo/serve)
 ; Fetch the ptr/ffi prims from the catalog (ns `ptr`/`ffi` are de-registered, R5).
 (def %ptr-call (prim-ref 'ptr 'call))
 (def %dlopen (prim-ref 'ffi 'dlopen))
 (def %dlsym (prim-ref 'ffi 'dlsym))
-
 
 ; --- The server, and everything else a run decides for itself ---------------
 (def %logo-port 8080)
@@ -33,12 +35,12 @@
 ; once, in the image writer's batch child, and inherited by every later boot.
 ; run.x calls this after the boot, where %batch? is the session's own; a source
 ; boot reaches the same call on the same line.
-(def %logo-start!
+(def logo-start!
   (fn (_)
     (do
       ; The bytecode file is this run's artifact: emptied per run, in batch too,
       ; which is why it sits outside the unless.
-      (%bc-write)
+      (bc-write)
       (unless %batch?
         (set! %server-pid
           ; One expression, so the child does not race for the pipe.
@@ -66,8 +68,7 @@
           (do
             ; Kill the server child when the REPL exits.  No server in batch:
             ; %logo-on-exit stays nil and logo-batch's unless skips it.
-            (set! %logo-on-exit
-              (fn ()
+            (logo-on-exit! (fn ()
                 ; Kill politely, then reap: the child was never waited on
                 ; before, leaving a zombie for the parent's remaining
                 ; lifetime (#226).
@@ -80,12 +81,13 @@
       ())))
 
 ; --- Hooks: append bytecodes, clear file on clearscreen ---
-(Turtle on-bc %bc-append)
-(Turtle on-clear %bc-clear)
+(Turtle on-bc bc-append)
+(Turtle on-clear bc-clear)
 
 ; RE-EXPORTED, so the entry imports ONE thing.  logo-repl and logo-batch are
 ; logo/repl's, reached here through logo/turtle; run.x wants the language and
 ; its plumbing together, and listing them here is what lets it say so in one
 ; line instead of three.
+
 (provide logo/main
-  logo-version logo-repl logo-batch %logo-port %logo-start!)
+  logo-start!)

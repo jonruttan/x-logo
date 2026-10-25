@@ -68,5 +68,11 @@ cat > "$OUT" <<EOF
 (include "$X_BASE")
 (import-path! "$BUNDLE")
 (def %lang-root "$BUNDLE")
-(import logo/turtle)
+(import logo/turtle
+  logo-version Turtle Logo logo-repl logo-batch logo-process-tokens
+  logo-indent-to-blocks turtle-json turtle-json-str turtle-bc-str)
+; The specs read these from their modules by name; the reader handles are
+; (Logo base) and (Logo word-type).
+(import logo/types is-block? block-contents logo-word)
+(import logo/expr logo-parse-one-expr)
 EOF

@@ -23,7 +23,8 @@
 ; is boot glue (it forks the viewer server, wires the bytecode hooks, reaps the
 ; child) and re-exports the two launchers. x.sh cats this file onto stdin, so it
 ; has no file directory; `import` goes through the root x.sh armed.
-(import logo/main)
+(import logo/main logo-start!)
+(import logo/turtle logo-version logo-repl logo-batch)
 
 (set! %lang-name "Logo")
 (set! %lang-version logo-version)
@@ -37,6 +38,6 @@
 ; would discard it unread; %batch? comes from the seam. The run's own decisions
 ; -- the bytecode file, and the viewer server for a session -- are made here,
 ; not by the import, so a boot from a state image makes them too. See
-; %logo-start! in logo/main.x.
-(%logo-start!)
+; logo-start! in logo/main.x.
+(logo-start!)
 (if %batch? (logo-batch) (logo-repl))

@@ -1,16 +1,16 @@
 ; math.x -- Logo math functions and LFSR random number generator
-(import logo/state)
+(module logo/math)
+(import logo/state as-float deg->rad logo-pi)
 (import logo/types)
-(import logo/expr)
 (import x/num/float)
 
 ; ============================================================
 ; Degree/radian conversion
 ; ============================================================
 
-; %deg->rad is state.x's, which the turtle's own moves call.
+; deg->rad is state.x's, which the turtle's own moves call.
 (def %rad->deg
-  (fn (_ rad) (Float / (Float * rad (Float from 180)) %logo-pi)))
+  (fn (_ rad) (Float / (Float * rad (Float from 180)) logo-pi)))
 
 ; ============================================================
 ; LFSR random number generator (pure x-lang, no C dependency)
@@ -39,26 +39,24 @@
 (Logo functions
   (list
     ; 1-arg math functions
-    (list "SQRT"      1 (fn (_ x) (Float sqrt (%as-float x))))
+    (list "SQRT"      1 (fn (_ x) (Float sqrt (as-float x))))
     (list "ABS"       1 (fn (_ x) (if (Float float? x) (Float abs x) (if (< x 0) (- x) x))))
-    (list "SIN"       1 (fn (_ x) (Float sin (%deg->rad x))))
-    (list "COS"       1 (fn (_ x) (Float cos (%deg->rad x))))
-    (list "TAN"       1 (fn (_ x) (Float tan (%deg->rad x))))
-    (list "ARCTAN"    1 (fn (_ x) (%rad->deg (Float atan (%as-float x)))))
-    (list "ROUND"     1 (fn (_ x) (Float ->int (Float round (%as-float x)))))
-    (list "INT"       1 (fn (_ x) (Float ->int (Float floor (%as-float x)))))
+    (list "SIN"       1 (fn (_ x) (Float sin (deg->rad x))))
+    (list "COS"       1 (fn (_ x) (Float cos (deg->rad x))))
+    (list "TAN"       1 (fn (_ x) (Float tan (deg->rad x))))
+    (list "ARCTAN"    1 (fn (_ x) (%rad->deg (Float atan (as-float x)))))
+    (list "ROUND"     1 (fn (_ x) (Float ->int (Float round (as-float x)))))
+    (list "INT"       1 (fn (_ x) (Float ->int (Float floor (as-float x)))))
     (list "NOT"       1 (fn (_ x) (not x)))
 
     ; 2-arg math functions
     (list "REMAINDER" 2 (fn (_ a b) (% a b)))
     (list "RAND"      2 (fn (_ low high) (%logo-rand low high)))
-    (list "POWER"     2 (fn (_ base exp) (Float exp (Float * (%as-float exp) (Float log (%as-float base))))))
+    (list "POWER"     2 (fn (_ base exp) (Float exp (Float * (as-float exp) (Float log (as-float base))))))
 
     ))
 
 ; Constants as variables
 (Logo vars
-  (pair (pair "PI" %logo-pi) (Logo vars)))
+  (pair (pair "PI" logo-pi) (Logo vars)))
 
-(provide logo/math
-  %logo-rand %lfsr-state)

@@ -7,9 +7,9 @@
 ; (lines, indentation, blank-line termination, the arity hold) lives
 ; HERE, in the dialect, never in shared machinery.
 ;
-; All BLOCKING reads run inside %logo-base via the Base-eval door, so
+; All BLOCKING reads run inside (Logo base) via the Base-eval door, so
 ; the type alist that tokenizes is Logo's, and the #90 EOF latch, the
-; line counter, and EINTR effects land on %logo-base's OWN cells --
+; line counter, and EINTR effects land on (Logo base)'s OWN cells --
 ; the session base's stream state is never touched.  This module itself
 ; is plain x running on the session base (NOT inside x_token_read), so
 ; it is free of the reader-callback constraints.
@@ -21,7 +21,8 @@
 ; already buffered and the scanner classifies it without blocking.
 ; Tokens themselves always come from the real tokenizer -- the scanner
 ; never parses content.
-(import logo/types)
+(module logo/entry)
+(import logo/types is-block? logo-truncated logo-word=?)
 
 ; Fetch the plumbing prims from the catalog.
 (def %entry-str-make (prim-ref 'str 'make))
@@ -41,8 +42,8 @@
 (def %entry-buf-store ())
 (def %entry-buf ())
 
-; The prim objects are bound into %logo-base's env and invoked there via Base
-; eval, so the C functions run with p_base = %logo-base (the tokenizing type
+; The prim objects are bound into (Logo base)'s env and invoked there via Base
+; eval, so the C functions run with p_base = (Logo base) (the tokenizing type
 ; alist is selected by that argument alone). make-instance resolves the type
 ; against the calling base's alist, so a session-side call with a logo type
 ; answers nil -- instance synthesis goes through the door too. Cross-base forms
@@ -58,12 +59,12 @@
     (do
       (set! %entry-buf-store (%entry-str-make 4096))
       (set! %entry-buf (%entry-buf-make %entry-buf-store))
-      (Base bind %logo-base '%entry-door-tok (prim-ref 'tok 'read))
-      (Base bind %logo-base '%entry-door-byte (prim-ref 'buf 'read))
-      (Base bind %logo-base '%entry-door-buf %entry-buf)
-      (Base bind %logo-base '%entry-door-mi (prim-ref 'type 'make-instance))
-      (Base bind %logo-base '%entry-door-indent %logo-indent)
-      (Base bind %logo-base '%entry-door-pair pair)
+      (Base bind (Logo base) '%entry-door-tok (prim-ref 'tok 'read))
+      (Base bind (Logo base) '%entry-door-byte (prim-ref 'buf 'read))
+      (Base bind (Logo base) '%entry-door-buf %entry-buf)
+      (Base bind (Logo base) '%entry-door-mi (prim-ref 'type 'make-instance))
+      (Base bind (Logo base) '%entry-door-indent (Logo indent-type))
+      (Base bind (Logo base) '%entry-door-pair pair)
       ())))
 (%logo-doors!)
 (set! %image-transients
@@ -74,41 +75,41 @@
 (def %entry-tok-form (list '%entry-door-tok '%entry-door-buf))
 (def %entry-byte-form (list '%entry-door-byte '%entry-door-buf))
 
-; Synthesize the LOGO-INDENT instance (k . word) inside %logo-base.
+; Synthesize the LOGO-INDENT instance (k . word) inside (Logo base).
 ; k and word self-evaluate, so the built form needs no quoting.
 (def %entry-synth-indent
   (fn (_ k word)
-    (Base eval %logo-base
+    (Base eval (Logo base)
       (list '%entry-door-mi '%entry-door-indent
         (list '%entry-door-pair k word)))))
 
 ; One token from the live stream, tokenized by Logo's types.  nil means
 ; the stream ended (EOF, or an interrupted read via the EINTR latch).
-(def %entry-read-tok (fn (_) (Base eval %logo-base %entry-tok-form)))
+(def %entry-read-tok (fn (_) (Base eval (Logo base) %entry-tok-form)))
 
 ; One byte appended to the buffer (blocking); nil at stream end.  The
 ; byte value is then (buf last-char) -- a session-side cursor read.
 (def %entry-read-byte
   (fn (_)
-    (if (null? (Base eval %logo-base %entry-byte-form))
+    (if (null? (Base eval (Logo base) %entry-byte-form))
       ()
       (%entry-last-char %entry-buf))))
 
 ; ------------------------------------------------------------
 ; Cancel support for the REPL loop (provided)
 ; ------------------------------------------------------------
-; %logo-base's OWN filein cell: the #90 latch a ctrl-c'd read poisons.
+; (Logo base)'s OWN filein cell: the #90 latch a ctrl-c'd read poisons.
 ; Resolved per call -- filein is a chain with a cell per include.
-(def %logo-filein-cell
-  (fn (_) (%reflect-step %logo-base (%reflect-path (lit filein) %base-paths))))
+(def logo-filein-cell
+  (fn (_) (%reflect-step (Logo base) (%reflect-path (lit filein) %base-paths))))
 
 ; Drop everything unconsumed (a cancelled entry's partial line).
-(def %logo-entry-flush (fn (_) (%entry-buf-reset-prim %entry-buf)))
+(def logo-entry-flush (fn (_) (%entry-buf-reset-prim %entry-buf)))
 
 ; Clean-EOF marker: fresh pair, identity-compared with same? (never
 ; eq?, which compares value words).
-(def %logo-eof (pair () ()))
-(def %logo-entry-same? (fn (_ a b) (%entry-obj-same? a b)))
+(def logo-eof (pair () ()))
+(def logo-entry-same? (fn (_ a b) (%entry-obj-same? a b)))
 
 ; ------------------------------------------------------------
 ; The arity hold (%entry-wants-block?)
@@ -122,14 +123,14 @@
   (fn (self toks)
     (match
       ((null? toks) #f)
-      ((%is-block? (first toks)) #t)
+      ((is-block? (first toks)) #t)
       (#t (self (rest toks))))))
 
 (def %entry-has-word?
   (fn (self toks kw)
     (match
       ((null? toks) #f)
-      ((%logo-word=? (first toks) kw) #t)
+      ((logo-word=? (first toks) kw) #t)
       (#t (self (rest toks) kw)))))
 
 (def %entry-last-tok
@@ -146,8 +147,8 @@
       ((and (or (%entry-has-word? toks "TO")
                 (%entry-has-word? toks "REPEAT"))
             (not (%entry-has-block? toks))) #t)
-      ((%logo-word=? (%entry-last-tok toks) "THEN") #t)
-      ((%logo-word=? (%entry-last-tok toks) "ELSE") #t)
+      ((logo-word=? (%entry-last-tok toks) "THEN") #t)
+      ((logo-word=? (%entry-last-tok toks) "ELSE") #t)
       ((and (%entry-has-word? toks "IF")
             (not (%entry-has-word? toks "THEN"))) #t)
       (#t #f))))
@@ -196,7 +197,7 @@
         (do
           (%buffer-unread %entry-buf)
           (def tok (%entry-read-tok))
-          (if (if (null? tok) #t (eq? tok %logo-truncated))
+          (if (if (null? tok) #t (eq? tok logo-truncated))
             (error "Unterminated input")
             (self (pair tok acc))))))))
 
@@ -211,11 +212,11 @@
 (def %entry-read-line
   (fn (_ k)
     (def tok (%entry-read-tok))
-    (if (if (null? tok) #t (eq? tok %logo-truncated))
+    (if (if (null? tok) #t (eq? tok logo-truncated))
       (error "Unterminated input")
       (do
         (def head
-          (if (%entry-type? tok %logo)
+          (if (%entry-type? tok (Logo word-type))
             (%entry-synth-indent k (first tok))
             tok))
         (List reverse (%entry-line-toks (list head)))))))
@@ -235,16 +236,16 @@
 ;   column-0 line, nothing pending   -> the entry, ending AT ITS OWN
 ;     newline -- unless %entry-wants-block? holds it open
 ;   column-0 line, entry open        -> joins the entry, entry ends
-;   stream end at a line start       -> %logo-eof if nothing pending,
+;   stream end at a line start       -> logo-eof if nothing pending,
 ;     else "Unterminated input"
-(def %logo-read-entry
+(def logo-read-entry
   (fn ()
     (def %loop
       (fn (self acc)
         (def start (%entry-line-start 0))
         (match
           ((eq? start (lit eof))
-            (if (null? acc) %logo-eof (error "Unterminated input")))
+            (if (null? acc) logo-eof (error "Unterminated input")))
           ((eq? start (lit blank))
             (if (null? acc) (self ()) (List reverse acc)))
           ((eq? start (lit comment)) (self acc))
@@ -263,5 +264,5 @@
     (%loop ())))
 
 (provide logo/entry
-  %logo-read-entry %logo-eof %logo-entry-same?
-  %logo-filein-cell %logo-entry-flush)
+  logo-entry-flush logo-entry-same? logo-eof logo-filein-cell
+  logo-read-entry)
