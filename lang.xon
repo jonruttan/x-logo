@@ -32,6 +32,6 @@
 ; logo/state.x fetches the platform's type handles through and which no
 ; release before v0.15.0 provides.  v0.27.0 raised it: (Lexer state form
 ; fvars), which logo/types.x realizes every analyser state through (x-lang#947).
-(requires-release "v0.37.1")
+(requires-release "v0.39.0")
 
 (entry "run.x")
