@@ -54,7 +54,7 @@
               ; throw STOP errors in the request handler (#226).
               (do (guard (err
                       (%stderr "viewer: not started: "
-                               (if (str? err) err (%repl-write-to-str err)) "\n")
+                               (Str8 str err) "\n")
                       (Sys exit 1))
                     (Sys close 0) (Sys open-read "/dev/null")
                     (Sys signal (Sys sigint) (Sys sig-ign))

@@ -867,7 +867,7 @@ segfault the engine; the %as-float/%as-int doors in state.x raise instead.
 (logo-process-tokens (Tok read-str (Logo base) "fd [ 1 2 ] "))
 ```
 ---
-    Error: #<err:type Logo: expected a number>
+    Error: type: Logo: expected a number
 
 ### an indent block in a numeric slot raises type, not a crash
 
@@ -877,7 +877,7 @@ segfault the engine; the %as-float/%as-int doors in state.x raise instead.
 (logo-process-tokens (logo-indent-to-blocks toks))
 ```
 ---
-    Error: #<err:type Logo: expected a number>
+    Error: type: Logo: expected a number
 
 ### a string distance still coerces
 
@@ -896,7 +896,7 @@ segfault the engine; the %as-float/%as-int doors in state.x raise instead.
 (logo-process-tokens (Tok read-str (Logo base) "repeat \"x\" [ fd 100 ] "))
 ```
 ---
-    Error: #<err:type Logo: expected a number>
+    Error: type: Logo: expected a number
 
 ### a string repeat count coerces
 
