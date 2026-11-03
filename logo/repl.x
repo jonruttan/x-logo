@@ -86,7 +86,7 @@
               %logo-cancel)
             ; ctrl-d mid-entry / truncated pipe: report, clean up, end.
             (do
-              (%stderr "Error: " (if (str? err) err (%repl-write-to-str err))
+              (%stderr "Error: " (Str8 str err)
                        "\n")
               (unless (null? %logo-on-exit) (%logo-on-exit))
               (Sys exit 1))))
@@ -106,7 +106,7 @@
                 (display "\n")
                 (do
                   (%stderr "Error: "
-                           (if (str? err) err (%repl-write-to-str err)) "\n"))))
+                           (Str8 str err) "\n"))))
             ; The entry executes EXACTLY once, here (the old
             ; completeness probe that pre-executed entries is gone).
             (logo-process-tokens (logo-indent-to-blocks %entry))
@@ -137,9 +137,9 @@
     ; newline, the exit hook and (Sys exit 1). Caught by check-logo-tty.
     (guard (err
         (%stderr "Error: ")
-        ; loop.x's formatter, not logo-repl's str/number/symbol triple:
-        ; dispatch raises Err INSTANCES, and only the C writer renders those
-        (%stderr (if (str? err) err (%repl-write-to-str err)))
+        ; dispatch raises Err INSTANCES; Str8 str answers the sentence one was
+        ; raised with, and a string as it is
+        (%stderr (Str8 str err))
         (%stderr "\n")
         (unless (null? %logo-on-exit) (%logo-on-exit))
         (Sys exit 1))
