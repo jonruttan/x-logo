@@ -7,7 +7,7 @@
 ;   (import logo/turtle)
 ;   (import logo/serve)
 ;   ; ... run Logo commands to populate segments ...
-;   (turtle-serve 8080)
+;   (turtle-serve (Socket tcp-listen 8080))
 ;   ; Open http://localhost:8080 in browser
 
 ; %lang-root is THE BUNDLE'S OWN DIRECTORY, and it comes from the platform:
@@ -139,7 +139,7 @@
 (def %serve-accept-retries 100)
 
 (def turtle-serve
-  (fn (_ port)
+  (fn (_ server-fd)
     ; Read the HTML template.
     ;
     ; This is the one data path in the bundle, and the only reason %lang-root
@@ -155,13 +155,11 @@
     (def html-page
       (Str append "<script>window.TURTLE_ENDPOINT='/bc';</script>\n"
            html-template))
-    ; Create server socket
-    ;
-    ; The caller announces the address, not this function.  Under `-l logo`
-    ; the server runs in a forked child while the parent holds the terminal
-    ; and prints the prompt, so anything written here lands in the middle of
-    ; the parent's output, after the prompt it raced.
-    (def server-fd (Socket tcp-listen port))
+    ; server-fd is a listening socket the caller bound, and the caller
+    ; announces its address.  Under `-l logo` the parent binds it before the
+    ; fork and the server runs in the child, while the parent holds the
+    ; terminal: anything written here would land in the middle of the
+    ; parent's output, after the prompt it raced.
     ; Accept loop.  A failed accept is retried, but only so many times in a
     ; row: a failure that does not clear (a closed or invalid descriptor, no
     ; descriptors left) would otherwise spin at full CPU.  The raise ends the

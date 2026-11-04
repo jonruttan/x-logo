@@ -31,7 +31,7 @@ proc spawn_logo {} {
     global spawn_id
     spawn_logo_session
     expect {
-        "localhost:8080" {}
+        -re {localhost:[0-9]+} {}
         timeout { puts "FAIL: no banner"; exit 1 }
         eof { puts "FAIL: died at spawn"; exit 1 }
     }

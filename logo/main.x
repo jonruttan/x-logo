@@ -2,7 +2,8 @@
 ;
 ; Usage:  x -l logo
 ;
-; Starts a server on localhost:8080. Open the URL in your browser and type Logo
+; Starts a server on localhost:8080, or on a port the system picks when 8080 is
+; in use, and prints its address. Open the URL in your browser and type Logo
 ; commands; the browser updates live.
 ;
 ; This file is boot glue -- its point is its effects, in order: fork the viewer
@@ -20,13 +21,15 @@
 (def %bigint ())
 (import x/num/float)
 (import x/sys/posix)
+(import x/sys/socket)
 ; Fetch the ptr/ffi prims from the catalog (ns `ptr`/`ffi` are de-registered, R5).
 (def %ptr-call (prim-ref 'ptr 'call))
 (def %dlopen (prim-ref 'ffi 'dlopen))
 (def %dlsym (prim-ref 'ffi 'dlsym))
 
 ; --- The server, and everything else a run decides for itself ---------------
-(def %logo-port 8080)
+; The viewer's ports, tried in turn: 8080, else whatever the kernel picks.
+(def %logo-ports (list 8080 0))
 (def %server-pid ())
 
 ; Started by the entry, not by this import. Everything here answers a question
@@ -42,42 +45,55 @@
       ; which is why it sits outside the unless.
       (bc-write)
       (unless %batch?
-        (set! %server-pid
-          ; One expression, so the child does not race for the pipe.
-          (let ((pid (Sys fork)))
-            (if (= pid 0)
-              ; The child never leaves this arm.  An error that escaped it
-              ; would unwind into run.x, and the child would start a second
-              ; REPL on this terminal (x-lang's Proc keeps the same rule for
-              ; every fork): so every error is caught, reported, and ends the
-              ; child.  Ignore SIGINT in the server child so ctrl-c doesn't
-              ; throw STOP errors in the request handler (#226).
-              (do (guard (err
-                      (%stderr "viewer: not started: "
-                               (Str8 str err) "\n")
-                      (Sys exit 1))
-                    (Sys close 0) (Sys open-read "/dev/null")
-                    (Sys signal (Sys sigint) (Sys sig-ign))
-                    (turtle-serve %logo-port))
-                  (Sys exit 0))
-              pid)))
-        ; (Sys fork) answers -1 when it fails.  Then there is no child, and no
-        ; exit hook: kill(-1) would signal every process the user owns.
-        (if (< %server-pid 0)
-          (%stderr "viewer: not started: fork failed\n")
-          (do
-            ; Kill the server child when the REPL exits.  No server in batch:
-            ; %logo-on-exit stays nil and logo-batch's unless skips it.
-            (logo-on-exit! (fn ()
-                ; Kill politely, then reap: the child was never waited on
-                ; before, leaving a zombie for the parent's remaining
-                ; lifetime (#226).
-                (Sys kill %server-pid (Sys sigterm))
-                (Sys wait %server-pid)))
-            ; The one announcement, from the parent: the child is forked and
-            ; shares this terminal, so a line printed there arrives whenever
-            ; it arrives -- after the prompt, as often as not.
-            (display "viewer: http://localhost:" %logo-port "\n"))))
+        ; Bind in the parent, before the fork: the parent then knows the port it
+        ; announces, and a port that cannot be bound is reported here, with no
+        ; child started.
+        (def server-fd
+          (guard (err
+                  (%stderr "viewer: not started: " (Str8 str err) "\n")
+                  -1)
+            (Socket tcp-listen %logo-ports)))
+        (when (>= server-fd 0)
+          (def port (Socket local-port server-fd))
+          (set! %server-pid
+            ; One expression, so the child does not race for the pipe.
+            (let ((pid (Sys fork)))
+              (if (= pid 0)
+                ; The child never leaves this arm.  An error that escaped it
+                ; would unwind into run.x, and the child would start a second
+                ; REPL on this terminal (x-lang's Proc keeps the same rule for
+                ; every fork): so every error is caught, reported, and ends the
+                ; child.  Ignore SIGINT in the server child so ctrl-c doesn't
+                ; throw STOP errors in the request handler (#226).
+                (do (guard (err
+                        (%stderr "viewer: not started: "
+                                 (Str8 str err) "\n")
+                        (Sys exit 1))
+                      (Sys close 0) (Sys open-read "/dev/null")
+                      (Sys signal (Sys sigint) (Sys sig-ign))
+                      (turtle-serve server-fd))
+                    (Sys exit 0))
+                pid)))
+          ; The child serves on the socket; the parent's copy would keep the
+          ; port bound after the child has gone.
+          (Socket close server-fd)
+          ; (Sys fork) answers -1 when it fails.  Then there is no child, and no
+          ; exit hook: kill(-1) would signal every process the user owns.
+          (if (< %server-pid 0)
+            (%stderr "viewer: not started: fork failed\n")
+            (do
+              ; Kill the server child when the REPL exits.  No server in batch:
+              ; %logo-on-exit stays nil and logo-batch's unless skips it.
+              (logo-on-exit! (fn ()
+                  ; Kill politely, then reap: the child was never waited on
+                  ; before, leaving a zombie for the parent's remaining
+                  ; lifetime (#226).
+                  (Sys kill %server-pid (Sys sigterm))
+                  (Sys wait %server-pid)))
+              ; The one announcement, from the parent: the child is forked and
+              ; shares this terminal, so a line printed there arrives whenever
+              ; it arrives -- after the prompt, as often as not.
+              (display "viewer: http://localhost:" port "\n")))))
       ())))
 
 ; --- Hooks: append bytecodes, clear file on clearscreen ---
