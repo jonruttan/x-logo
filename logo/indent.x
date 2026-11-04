@@ -35,14 +35,15 @@
     ; one; both questions are answered in the event list now.
     (def %apply
       (fn (self evs accs tok)
-        (if (null? evs)
-          accs
-          (if (eq? (first evs) (lit close))
-            (self (rest evs) (%close-one accs) tok)
-            (if (eq? (first evs) (lit open))
-              (self (rest evs) (pair (list tok) accs) tok)
-              (self (rest evs)
-                (pair (pair tok (first accs)) (rest accs)) tok))))))
+        (match
+          ((null? evs)
+            accs)
+          ((eq? (first evs) (lit close))
+            (self (rest evs) (%close-one accs) tok))
+          ((eq? (first evs) (lit open))
+            (self (rest evs) (pair (list tok) accs) tok))
+          (#t
+            (self (rest evs) (pair (pair tok (first accs)) (rest accs)) tok)))))
 
     (def %process
       (fn (self toks accs)
