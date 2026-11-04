@@ -186,6 +186,147 @@
           (first r)))))
 
 ; ============================================================
+; The type handlers
+; ============================================================
+;
+; One handler set per type, each a function of the analyse state it dispatches
+; on.  A state is made with the base, not at load, so a handler set cannot be
+; a top-level value holding one: it takes the state the builder made.  The
+; types that carry no analyse row take no state.
+
+(def %logo-t-block
+  (fn (_)
+    (list
+      (pair 'write (fn (_ _) (display "[ ... ]")))
+      ; logo/dispatch defines logo-process-tokens and imports this module,
+      ; so it is reached through the module at call time, not imported.
+      (pair 'eval
+        (fn (_ self)
+          ((eval (lit logo-process-tokens) (module logo/dispatch)) (first self)))))))
+
+(def %logo-t-close
+  (fn (_ st)
+    (list
+      (pair 'analyse st)
+      (pair 'read (fn (_ . args) %logo-block-close)))))
+
+(def %logo-t-open
+  (fn (_ st)
+    (list
+      (pair 'analyse st)
+      (pair 'read
+        (fn (_ . args)
+          (def buf (first args))
+          (def %rb
+            (fn (self acc)
+              (def tok (%token-read buf))
+              ; nil = the stream ended inside the block: truncation, not an
+              ; implicit ]. Return the marker -- raising inside x_token_read
+              ; is banned (it crashed) -- and the entry layer raises
+              ; outside.
+              (if (null? tok)
+                logo-truncated
+                (if (eq? tok %logo-block-close)
+                  (%make-instance (Logo block-type) (List reverse acc))
+                  (self (pair tok acc))))))
+          (%rb ()))))))
+
+(def %logo-t-word
+  (fn (_ st)
+    (list
+      (pair 'analyse st)
+      (pair 'read
+        (fn (_ . args)
+          (%make-instance (Logo word-type) (%buffer-token (first args)))))
+      (pair 'write
+        (fn (_ self) (display (first self)))))))
+
+; LOGO-WS: spaces and tabs only, discard
+(def %logo-t-ws
+  (fn (_ st)
+    (list
+      (pair 'analyse st)
+      (pair 'delimit
+        (fn (_ buffer score chr)
+          (if (or (= chr 32) (= chr 9))
+            (do (%buffer-unread buffer) buffer)
+            ()))))))
+
+; LOGO-NEWLINE: bare newline, discard
+(def %logo-t-newline
+  (fn (_ st)
+    (list
+      (pair 'analyse st))))
+
+; LOGO-INDENT: \n + spaces/tabs + word
+(def %logo-t-indent
+  (fn (_ st)
+    (list
+      (pair 'analyse st)
+      (pair 'read
+        (fn (_ . read-args)
+          (def text (%buffer-token (first read-args)))
+          (def len (Str8 length text))
+          ; TAB STOP 1 -- Logo's historical answer, now STATED. The loop
+          ; this replaces stepped the index by one per space and per tab and
+          ; handed the result back as a column, which is a tab stop of one
+          ; written as an accident. x/reader/indent hands back the column and
+          ; the end index separately, so this stays correct if that number
+          ; ever changes. See #520.
+          (def scanned (%indent-scan-ref text 1 1))
+          (def indent (first scanned))
+          (def indent-end (rest scanned))
+          (def word (Str8 sub indent-end (- len indent-end) text))
+          (%make-instance (Logo indent-type) (pair indent word))))
+      (pair 'write
+        (fn (_ self)
+          (display (first (rest (first self)))))))))
+
+; LOGO-OP: operators and <- assignment
+(def %logo-t-op
+  (fn (_ st)
+    (list
+      (pair 'analyse st)
+      (pair 'read
+        (fn (_ . args)
+          (%make-instance (Logo op-type) (%buffer-token (first args)))))
+      (pair 'write
+        (fn (_ self) (display (first self)))))))
+
+; LOGO-PAREN: ( and )
+(def %logo-t-paren-open
+  (fn (_ st)
+    (list
+      (pair 'analyse st)
+      (pair 'read (fn (_ . args) (pair %logo-paren-label "("))))))
+
+(def %logo-t-paren-close
+  (fn (_ st)
+    (list
+      (pair 'analyse st)
+      (pair 'read (fn (_ . args) (pair %logo-paren-label ")"))))))
+
+; LOGO-STRING: "..."
+(def %logo-t-string
+  (fn (_ st)
+    (list
+      (pair 'analyse st)
+      (pair 'read
+        (fn (_ . args)
+          (def text (%buffer-token (first args)))
+          (def len (Str8 length text))
+          (%make-instance (Logo string-type) (Str8 sub 1 (- len 2) text))))
+      (pair 'write
+        (fn (_ self)
+          (display "\"" (first self) "\""))))))
+
+; LOGO-SEMI: ; comment to end of line (discard)
+(def %logo-t-semi
+  (fn (_ st)
+    (list
+      (pair 'analyse st))))
+
+; ============================================================
 ; Logo tokenizer base
 ; ============================================================
 
@@ -247,127 +388,21 @@
     (def paren-open-open (%logo-st (%logo-f-byte 40) (list (pair 'accept accept))))
     (def paren-close-open (%logo-st (%logo-f-byte 41) (list (pair 'accept accept))))
 
-    ; LOGO-BLOCK
-    (Logo block-type (Base make-type base "LOGO-BLOCK"
-        (list
-          (pair 'write (fn (_ _) (display "[ ... ]")))
-          ; logo/dispatch defines logo-process-tokens and imports this module,
-          ; so it is reached through the module at call time, not imported.
-          (pair 'eval (fn (_ self) ((eval (lit logo-process-tokens) (module logo/dispatch)) (first self)))))))
-
-    ; LOGO-CLOSE
-    (Base make-type base "LOGO-CLOSE"
-      (list
-        (pair 'analyse close-open)
-        (pair 'read (fn (_ . args) %logo-block-close))))
-
-    ; LOGO-OPEN
-    (Base make-type base "LOGO-OPEN"
-      (list
-        (pair 'analyse open-open)
-        (pair 'read
-          (fn (_ . args)
-            (def buf (first args))
-            (def %rb
-              (fn (self acc)
-                (def tok (%token-read buf))
-                ; nil = the stream ended inside the block: truncation, not an
-                ; implicit ]. Return the marker -- raising inside x_token_read
-                ; is banned (it crashed) -- and the entry layer raises
-                ; outside.
-                (if (null? tok)
-                  logo-truncated
-                  (if (eq? tok %logo-block-close)
-                    (%make-instance (Logo block-type) (List reverse acc))
-                    (self (pair tok acc))))))
-            (%rb ())))))
-
-    ; LOGO (word type)
-    (Logo word-type (Base make-type base "LOGO"
-        (list
-          (pair 'analyse word-open)
-          (pair 'read
-            (fn (_ . args)
-              (%make-instance (Logo word-type) (%buffer-token (first args)))))
-          (pair 'write
-            (fn (_ self) (display (first self)))))))
-
-    ; LOGO-WS: spaces and tabs only, discard
-    (Base make-type base "LOGO-WS"
-      (list
-        (pair 'analyse ws-open)
-        (pair 'delimit
-          (fn (_ buffer score chr)
-            (if (or (= chr 32) (= chr 9))
-              (do (%buffer-unread buffer) buffer)
-              ())))))
-
-    ; LOGO-NEWLINE: bare newline, discard
-    (Base make-type base "LOGO-NEWLINE"
-      (list
-        (pair 'analyse nl-open)))
-
-    ; LOGO-INDENT: \n + spaces/tabs + word
-    (Logo indent-type (Base make-type base "LOGO-INDENT"
-        (list
-          (pair 'analyse indent-open)
-          (pair 'read
-            (fn (_ . read-args)
-              (def text (%buffer-token (first read-args)))
-              (def len (Str8 length text))
-              ; TAB STOP 1 -- Logo's historical answer, now STATED. The loop
-              ; this replaces stepped the index by one per space and per tab and
-              ; handed the result back as a column, which is a tab stop of one
-              ; written as an accident. x/reader/indent hands back the column and
-              ; the end index separately, so this stays correct if that number
-              ; ever changes. See #520.
-              (def scanned (%indent-scan-ref text 1 1))
-              (def indent (first scanned))
-              (def indent-end (rest scanned))
-              (def word (Str8 sub indent-end (- len indent-end) text))
-              (%make-instance (Logo indent-type) (pair indent word))))
-          (pair 'write
-            (fn (_ self)
-              (display (first (rest (first self)))))))))
-
-    ; LOGO-OP: operators and <- assignment
-    (Logo op-type (Base make-type base "LOGO-OP"
-        (list
-          (pair 'analyse op-open)
-          (pair 'read
-            (fn (_ . args)
-              (%make-instance (Logo op-type) (%buffer-token (first args)))))
-          (pair 'write
-            (fn (_ self) (display (first self)))))))
-
-    ; LOGO-PAREN: ( and )
-    (Base make-type base "LOGO-PAREN-OPEN"
-      (list
-        (pair 'analyse paren-open-open)
-        (pair 'read (fn (_ . args) (pair %logo-paren-label "(")))))
-
-    (Base make-type base "LOGO-PAREN-CLOSE"
-      (list
-        (pair 'analyse paren-close-open)
-        (pair 'read (fn (_ . args) (pair %logo-paren-label ")")))))
-
-    ; LOGO-STRING: "..."
-    (Logo string-type (Base make-type base "LOGO-STRING"
-        (list
-          (pair 'analyse string-open)
-          (pair 'read
-            (fn (_ . args)
-              (def text (%buffer-token (first args)))
-              (def len (Str8 length text))
-              (%make-instance (Logo string-type) (Str8 sub 1 (- len 2) text))))
-          (pair 'write
-            (fn (_ self)
-              (display "\"" (first self) "\""))))))
-
-    ; LOGO-SEMI: ; comment to end of line (discard)
-    (Base make-type base "LOGO-SEMI"
-      (list
-        (pair 'analyse semi-open)))
+    ; The rows are in registration order: analyse handlers are offered each
+    ; byte in the order their types went on, so this order decides which type
+    ; claims a byte two of them could start.
+    (Logo block-type (Base make-type base "LOGO-BLOCK" (%logo-t-block)))
+    (Base make-type base "LOGO-CLOSE" (%logo-t-close close-open))
+    (Base make-type base "LOGO-OPEN" (%logo-t-open open-open))
+    (Logo word-type (Base make-type base "LOGO" (%logo-t-word word-open)))
+    (Base make-type base "LOGO-WS" (%logo-t-ws ws-open))
+    (Base make-type base "LOGO-NEWLINE" (%logo-t-newline nl-open))
+    (Logo indent-type (Base make-type base "LOGO-INDENT" (%logo-t-indent indent-open)))
+    (Logo op-type (Base make-type base "LOGO-OP" (%logo-t-op op-open)))
+    (Base make-type base "LOGO-PAREN-OPEN" (%logo-t-paren-open paren-open-open))
+    (Base make-type base "LOGO-PAREN-CLOSE" (%logo-t-paren-close paren-close-open))
+    (Logo string-type (Base make-type base "LOGO-STRING" (%logo-t-string string-open)))
+    (Base make-type base "LOGO-SEMI" (%logo-t-semi semi-open))
 
     base)))
 
