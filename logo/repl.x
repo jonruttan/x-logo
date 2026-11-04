@@ -7,12 +7,11 @@
   logo-read-entry)
 (import logo/types)
 ; Fetch the tokenizer prims from the catalog (ns `buf`/`tok` are de-registered, R5).
-(def %token-read-string (prim-ref 'tok 'read-str))
+(import x/core/doors tok-read-str int->char)
 
 ; Fetch the io plumbing prims from the catalog (ns `io` partly de-registered, R5).
 (def %read-char (prim-ref 'io 'read-char))
 ; Fetch the char/int casts from the catalog (ns `char`/`int` utility members de-registered, R5).
-(def %integer->char (prim-ref 'int '->char))
 
 ; ============================================================
 ; Line reader (batch mode only -- the interactive path reads through
@@ -30,7 +29,7 @@
           (unless (null? acc) (bytes->str (List reverse acc)))
           (if (= ch 10)
             (bytes->str (List reverse acc))
-            (self (pair (%integer->char ch) acc))))))
+            (self (pair (int->char ch) acc))))))
     (%rl ())))
 
 ; ============================================================
@@ -143,7 +142,7 @@
         (%stderr "\n")
         (unless (null? %logo-on-exit) (%logo-on-exit))
         (Sys exit 1))
-      (def tokens (%token-read-string (Logo base) (Str append content " ")))
+      (def tokens (tok-read-str (Logo base) (Str append content " ")))
       (logo-process-tokens (logo-indent-to-blocks tokens))
       (unless (null? %logo-on-exit) (%logo-on-exit)))))
 

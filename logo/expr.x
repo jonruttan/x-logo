@@ -9,7 +9,7 @@
   cmd-arity cmd-handler is-block? is-paren? is-string? logo-string-val
   logo-word)
 ; Fetch the type prims from the catalog (ns `type` is de-registered, R5).
-(def %type? (prim-ref 'type '?))
+(import x/core/doors type?)
 
 ; ============================================================
 ; Operator helpers
@@ -17,12 +17,12 @@
 
 (def is-op-str?
   (fn (_ tok s)
-    (and (%type? tok (Logo op-type))
+    (and (type? tok (Logo op-type))
          (str=? (first tok) s))))
 
 (def op-precedence
   (fn (_ tok)
-    (if (not (%type? tok (Logo op-type))) -1
+    (if (not (type? tok (Logo op-type))) -1
       (let ((s (first tok)))
         (match
           ((str=? s "=")  1) ((str=? s ">")  1) ((str=? s "<")  1)

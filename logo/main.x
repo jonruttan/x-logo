@@ -23,9 +23,7 @@
 (import x/sys/posix)
 (import x/sys/socket)
 ; Fetch the ptr/ffi prims from the catalog (ns `ptr`/`ffi` are de-registered, R5).
-(def %ptr-call (prim-ref 'ptr 'call))
-(def %dlopen (prim-ref 'ffi 'dlopen))
-(def %dlsym (prim-ref 'ffi 'dlsym))
+(import x/core/doors ptr-call ffi-dlopen ffi-dlsym)
 
 ; --- The server, and everything else a run decides for itself ---------------
 ; The viewer's ports, tried in turn: 8080, else whatever the kernel picks.

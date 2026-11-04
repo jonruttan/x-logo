@@ -25,12 +25,9 @@
 (import logo/types is-block? logo-truncated logo-word=?)
 
 ; Fetch the plumbing prims from the catalog.
-(def %entry-str-make (prim-ref 'str 'make))
+(import x/core/doors str-make buf-last-char type? obj-same?)
 (def %entry-buf-make (prim-ref 'buf 'make))
 (def %entry-buf-reset-prim (prim-ref 'buf 'reset))
-(def %entry-last-char (prim-ref 'buf 'last-char))
-(def %entry-type? (prim-ref 'type '?))
-(def %entry-obj-same? (prim-ref 'obj 'same?))
 
 ; ------------------------------------------------------------
 ; The stream buffer
@@ -57,7 +54,7 @@
 (def %logo-doors!
   (fn (_)
     (do
-      (set! %entry-buf-store (%entry-str-make 4096))
+      (set! %entry-buf-store (str-make 4096))
       (set! %entry-buf (%entry-buf-make %entry-buf-store))
       (Base bind (Logo base) '%entry-door-tok (prim-ref 'tok 'read))
       (Base bind (Logo base) '%entry-door-byte (prim-ref 'buf 'read))
@@ -93,7 +90,7 @@
   (fn (_)
     (if (null? (Base eval (Logo base) %entry-byte-form))
       ()
-      (%entry-last-char %entry-buf))))
+      (buf-last-char %entry-buf))))
 
 ; ------------------------------------------------------------
 ; Cancel support for the REPL loop (provided)
@@ -109,7 +106,7 @@
 ; Clean-EOF marker: fresh pair, identity-compared with same? (never
 ; eq?, which compares value words).
 (def logo-eof (pair () ()))
-(def logo-entry-same? (fn (_ a b) (%entry-obj-same? a b)))
+(def logo-entry-same? (fn (_ a b) (obj-same? a b)))
 
 ; ------------------------------------------------------------
 ; The arity hold (%entry-wants-block?)
@@ -216,7 +213,7 @@
       (error "Unterminated input")
       (do
         (def head
-          (if (%entry-type? tok (Logo word-type))
+          (if (type? tok (Logo word-type))
             (%entry-synth-indent k (first tok))
             tok))
         (List reverse (%entry-line-toks (list head)))))))

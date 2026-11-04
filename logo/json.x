@@ -3,7 +3,7 @@
 (import logo/serve fstr)
 (import logo/state)
 ; Fetch the io plumbing prims from the catalog (ns `io` partly de-registered, R5).
-(def %write-to-str (prim-ref 'io 'write-to-str))
+(import x/core/doors io-write-to-str)
 
 ; ============================================================
 ; Bytecode JSON array string (for static embedding)
@@ -12,7 +12,7 @@
 (def turtle-bc-str
   (fn ()
     (def bc (List reverse (Turtle bc)))
-    (def fstr (fn (_ v) (%write-to-str v)))
+    (def fstr (fn (_ v) (io-write-to-str v)))
     (def %build
       (fn (self items acc first?)
         (if (null? items) acc
