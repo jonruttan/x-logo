@@ -81,12 +81,11 @@
 ; Skip commas and closing parens between args (for grouped arg syntax)
 (def %skip-separators
   (fn (self toks)
-    (if (null? toks) toks
-      (if (is-op-str? (first toks) ",")
-        (self (rest toks))
-        (if (is-paren? (first toks) ")")
-          (self (rest toks))
-          toks)))))
+    (match
+      ((null? toks)                      toks)
+      ((is-op-str? (first toks) ",")     (self (rest toks)))
+      ((is-paren? (first toks) ")")      (self (rest toks)))
+      (#t                                toks))))
 
 (def %logo-consume-n-args
   (fn (_ n tokens)

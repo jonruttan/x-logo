@@ -16,9 +16,9 @@
 # The linter ships with the platform, like the spec runner and the release-refs
 # check; this script locates it and names the files to lint.
 #
-# Advisory findings are printed and do not fail the run.  The kit's --strict
-# also fails on the structural rules -- ladder, ladder-dict and depth -- which
-# logo/types.x currently reports one of, so this runs without it.
+# --strict fails the run on the structural rules -- ladder, ladder-dict and
+# depth -- which this bundle reports none of.  The advisory rules print either
+# way and never fail a run.
 #
 # Set X to point at a particular x; X_LANG_KIT overrides the kit location.
 set -e
@@ -46,4 +46,4 @@ KIT="${X_LANG_KIT:-$("$X" --share-dir)/tools/lang-kit}"
 cd "$BUNDLE"
 [ $# -gt 0 ] || set -- run.x logo/*.x
 
-BUNDLE="$BUNDLE" X="$X" sh "$KIT/lint.sh" "$@"
+BUNDLE="$BUNDLE" X="$X" sh "$KIT/lint.sh" --strict "$@"
