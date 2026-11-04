@@ -54,7 +54,8 @@ x -l logo -f prog.logo    # batch: run the program, write the bytecode, no serve
 ```
 
 The interactive form opens a REPL and serves the viewer at
-`http://localhost:8080`. Type Logo commands and watch the turtle draw in the
+`http://localhost:8080`, or at a port the system picks when 8080 is in use;
+the line `viewer: http://localhost:PORT` names it. Type Logo commands and watch the turtle draw in the
 browser.
 
 Chapter-1 programs from *Turtle Geometry* are in
@@ -63,7 +64,7 @@ described under [File Loading](#file-loading).
 
 ## Requirements
 
-**x-lang v0.44.0 or later**, declared in [`lang.xon`](lang.xon) and enforced by
+**x-lang v0.45.0 or later**, declared in [`lang.xon`](lang.xon) and enforced by
 the release pairing rather than by hope. The floor has teeth: this bundle
 fetches the platform's type handles through `(Type named ...)`, and that door
 does not exist in earlier platforms — against one, the bundle raises at load
@@ -253,7 +254,7 @@ PRINT EUCLID(360, 144)    ; 72
 
 ## Browser Viewer
 
-The viewer at `http://localhost:8080` shows the turtle drawing in real time.
+The viewer at the address the REPL prints (`http://localhost:8080` unless that port is in use) shows the turtle drawing in real time.
 
 - **Play/Pause** — control animation playback
 - **Reset** — restart animation from the beginning
