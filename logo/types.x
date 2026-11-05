@@ -1,7 +1,7 @@
 ; types.x -- Logo tokenizer base and type definitions
 (module logo/types)
 ; Fetch the tokenizer prims from the catalog (ns `buf`/`tok` are de-registered, R5).
-(def %buffer-token (prim-ref 'buf 'tok))
+(import x/core/doors buf-tok type-make-instance type-make type-of type? char->int)
 (def %token-read (prim-ref 'tok 'read))
 
 ; Fetch the type-system helpers from the catalog (registered by sys/type.x).
@@ -16,12 +16,7 @@
 (def %indent-scan-ref (prim-ref 'indent 'scan))
 (import x/type/str)
 ; Fetch the type prims from the catalog (ns `type` is de-registered, R5).
-(def %make-instance (prim-ref 'type 'make-instance))
-(def %make-type (prim-ref 'type 'make))
-(def %type-of (prim-ref 'type 'of))
-(def %type? (prim-ref 'type '?))
 ; Fetch the char/int casts from the catalog (ns `char`/`int` utility members de-registered, R5).
-(def %char->integer (prim-ref 'char '->int))
 
 ; ============================================================
 ; Type helpers
@@ -227,7 +222,7 @@
               (if (null? tok)
                 logo-truncated
                 (if (eq? tok %logo-block-close)
-                  (%make-instance (Logo block-type) (List reverse acc))
+                  (type-make-instance (Logo block-type) (List reverse acc))
                   (self (pair tok acc))))))
           (%rb ()))))))
 
@@ -237,7 +232,7 @@
       (pair 'analyse st)
       (pair 'read
         (fn (_ . args)
-          (%make-instance (Logo word-type) (%buffer-token (first args)))))
+          (type-make-instance (Logo word-type) (buf-tok (first args)))))
       (pair 'write
         (fn (_ self) (display (first self)))))))
 
@@ -265,7 +260,7 @@
       (pair 'analyse st)
       (pair 'read
         (fn (_ . read-args)
-          (def text (%buffer-token (first read-args)))
+          (def text (buf-tok (first read-args)))
           (def len (Str8 length text))
           ; TAB STOP 1 -- Logo's historical answer, now STATED. The loop
           ; this replaces stepped the index by one per space and per tab and
@@ -277,7 +272,7 @@
           (def indent (first scanned))
           (def indent-end (rest scanned))
           (def word (Str8 sub indent-end (- len indent-end) text))
-          (%make-instance (Logo indent-type) (pair indent word))))
+          (type-make-instance (Logo indent-type) (pair indent word))))
       (pair 'write
         (fn (_ self)
           (display (first (rest (first self)))))))))
@@ -289,7 +284,7 @@
       (pair 'analyse st)
       (pair 'read
         (fn (_ . args)
-          (%make-instance (Logo op-type) (%buffer-token (first args)))))
+          (type-make-instance (Logo op-type) (buf-tok (first args)))))
       (pair 'write
         (fn (_ self) (display (first self)))))))
 
@@ -313,9 +308,9 @@
       (pair 'analyse st)
       (pair 'read
         (fn (_ . args)
-          (def text (%buffer-token (first args)))
+          (def text (buf-tok (first args)))
           (def len (Str8 length text))
-          (%make-instance (Logo string-type) (Str8 sub 1 (- len 2) text))))
+          (type-make-instance (Logo string-type) (Str8 sub 1 (- len 2) text))))
       (pair 'write
         (fn (_ self)
           (display "\"" (first self) "\""))))))
@@ -347,8 +342,8 @@
     ; walk encoded x-engine-c's spine, and decision L1 leaves each engine
     ; its own -- the route door resolves whichever engine is underneath.
     (def %cell (%inst cell 'type-alist))
-    (def %int-name (%type-of 0))
-    (def %float-name (%type-of (Float from 0)))
+    (def %int-name (type-of 0))
+    (def %float-name (type-of (Float from 0)))
     ; Keep only INTEGER and FLOAT from the base. A local walker, renamed off the
     ; boot %filter it shadowed (#227): the alist walked here lives in the
     ; fresh child base, and type labels are per-base, so the canonical %filter's
@@ -418,14 +413,14 @@
 (def is-block?
   (fn (_ tok)
     (match
-      ((%type? tok (Logo block-type)) #t)
+      ((type? tok (Logo block-type)) #t)
       ((pair? tok) (eq? (first tok) %indent-block-label))
       (#t #f))))
 
 (def block-contents
   (fn (_ tok)
     (match
-      ((%type? tok (Logo block-type)) (first tok))
+      ((type? tok (Logo block-type)) (first tok))
       (#t (rest tok)))))
 
 (def make-indent-block
@@ -435,21 +430,21 @@
 (def logo-word
   (fn (_ tok)
     (match
-      ((%type? tok (Logo word-type))        (first tok))
-      ((%type? tok (Logo indent-type)) (rest (first tok)))
+      ((type? tok (Logo word-type))        (first tok))
+      ((type? tok (Logo indent-type)) (rest (first tok)))
       (#t ()))))
 
 (def %logo-op-str
   (fn (_ tok)
-    (if (%type? tok (Logo op-type)) (first tok) ())))
+    (if (type? tok (Logo op-type)) (first tok) ())))
 
 (def %is-op?
   (fn (_ tok)
-    (%type? tok (Logo op-type))))
+    (type? tok (Logo op-type))))
 
 (def is-string?
   (fn (_ tok)
-    (%type? tok (Logo string-type))))
+    (type? tok (Logo string-type))))
 
 (def logo-string-val
   (fn (_ tok)

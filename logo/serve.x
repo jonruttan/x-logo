@@ -31,11 +31,8 @@
 ; their Linux column.
 (import x/sys/socket)
 ; Fetch the ptr/ffi prims from the catalog (ns `ptr`/`ffi` are de-registered, R5).
-(def %ptr-call (prim-ref 'ptr 'call))
-(def %dlopen (prim-ref 'ffi 'dlopen))
-(def %dlsym (prim-ref 'ffi 'dlsym))
+(import x/core/doors ptr-call ffi-dlopen ffi-dlsym io-write-to-str)
 ; Fetch the io plumbing prims from the catalog (ns `io` partly de-registered, R5).
-(def %write-to-str (prim-ref 'io 'write-to-str))
 
 ; ============================================================
 ; HTTP helpers
@@ -84,7 +81,7 @@
 
 (def %bc-path "/tmp/turtle.bc")
 (def %bc-fd -1)
-(def fstr (fn (_ v) (%write-to-str v)))
+(def fstr (fn (_ v) (io-write-to-str v)))
 
 (def %bc-open
   (fn ()

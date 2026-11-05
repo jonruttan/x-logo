@@ -16,7 +16,7 @@
 (import logo/types make-indent-block)
 (import x/reader/indent)
 ; Fetch the type prims from the catalog (ns `type` is de-registered, R5).
-(def %type? (prim-ref 'type '?))
+(import x/core/doors type?)
 
 (def logo-indent-to-blocks
   (fn (_ tokens)
@@ -52,7 +52,7 @@
           ; closes and nothing else -- there is no line to continue.
           (%apply (ind close-all) accs ())
           (let ((tok (first toks)))
-            (if (%type? tok (Logo indent-type))
+            (if (type? tok (Logo indent-type))
               (self (rest toks) (%apply (ind feed (first (first tok))) accs tok))
               ; Not an indent token: it joins the line already being built, and
               ; the indenter never hears about it.

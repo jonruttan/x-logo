@@ -7,18 +7,12 @@
 (import logo/expr is-op-str? logo-parse-expr logo-parse-one-expr op-precedence)
 (import logo/indent logo-indent-to-blocks)
 ; Fetch the tokenizer prims from the catalog (ns `buf`/`tok` are de-registered, R5).
-(def %token-read-string (prim-ref 'tok 'read-str))
+(import x/core/doors tok-read-str ptr-call ptr->str ptr-set! ffi-dlopen ffi-dlsym int->ptr)
 
 (import x/sys/posix)
 (import x/sys/file)
 ; Fetch the ptr/ffi prims from the catalog (ns `ptr`/`ffi` are de-registered, R5).
-(def %ptr-call (prim-ref 'ptr 'call))
-(def %ptr->str (prim-ref 'ptr '->str))
-(def %ptr-set! (prim-ref 'ptr 'set!))
-(def %dlopen (prim-ref 'ffi 'dlopen))
-(def %dlsym (prim-ref 'ffi 'dlsym))
 ; Fetch the char/int casts from the catalog (ns `char`/`int` utility members de-registered, R5).
-(def %int->ptr (prim-ref 'int '->ptr))
 
 ; ============================================================
 ; File reader (uses read-char with stdin redirection)
@@ -245,13 +239,13 @@
         (let ((r (%logo-consume-arg remaining)))
           (def code (first r))
           (logo-process-tokens
-            (%token-read-string (Logo base) (Str append code " ")))
+            (tok-read-str (Logo base) (Str append code " ")))
           (logo-process-tokens (rest r))))
       ((str=? uword "LOAD")
         (let ((r (%logo-consume-arg remaining)))
           (def filename (first r))
           (def content (%logo-read-file filename))
-          (def tokens (%token-read-string (Logo base) (Str append content " ")))
+          (def tokens (tok-read-str (Logo base) (Str append content " ")))
           (logo-process-tokens (logo-indent-to-blocks tokens))
           (logo-process-tokens (rest r))))
       (#t (Err raise 'value (Str append "Unknown special: " uword) ())))))
