@@ -1,5 +1,5 @@
 #!/usr/bin/expect -f
-# When :8080 is held, the viewer binds a port the system picks and the REPL
+# When :8080 is held, the viewer binds the next free candidate and the REPL
 # announces that one; the session runs as usual and exits cleanly, and the
 # server child goes with it.
 source [file join [file dirname [info script]] lib.exp]
