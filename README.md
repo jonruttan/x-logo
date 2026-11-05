@@ -54,8 +54,8 @@ x -l logo -f prog.logo    # batch: run the program, write the bytecode, no serve
 ```
 
 The interactive form opens a REPL and serves the viewer at
-`http://localhost:8080`, or at a port the system picks when 8080 is in use;
-the line `viewer: http://localhost:PORT` names it. Type Logo commands and watch the turtle draw in the
+`http://localhost:8080`, or at the first free port up to 8089, or at one the
+system picks when all ten are in use; the line `viewer: http://localhost:PORT` names it. Type Logo commands and watch the turtle draw in the
 browser.
 
 Chapter-1 programs from *Turtle Geometry* are in
