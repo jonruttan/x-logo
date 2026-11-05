@@ -2,8 +2,8 @@
 ;
 ; Usage:  x -l logo
 ;
-; Starts a server on localhost:8080, or on a port the system picks when 8080 is
-; in use, and prints its address. Open the URL in your browser and type Logo
+; Starts a server on the first free port from localhost:8080 to 8089, or on one
+; the system picks when all ten are in use, and prints its address. Open the URL in your browser and type Logo
 ; commands; the browser updates live.
 ;
 ; This file is boot glue -- its point is its effects, in order: fork the viewer
@@ -22,14 +22,16 @@
 (import x/num/float)
 (import x/sys/posix)
 (import x/sys/socket)
+(import x/type/gen)
 ; Fetch the ptr/ffi prims from the catalog (ns `ptr`/`ffi` are de-registered, R5).
 (def %ptr-call (prim-ref 'ptr 'call))
 (def %dlopen (prim-ref 'ffi 'dlopen))
 (def %dlsym (prim-ref 'ffi 'dlsym))
 
 ; --- The server, and everything else a run decides for itself ---------------
-; The viewer's ports, tried in turn: 8080, else whatever the kernel picks.
-(def %logo-ports (list 8080 0))
+; The viewer's ports, tried in turn: 8080 to 8089, else whatever the kernel
+; picks.
+(def %logo-ports (list (Gen range 8080 8090) 0))
 (def %server-pid ())
 
 ; Started by the entry, not by this import. Everything here answers a question
