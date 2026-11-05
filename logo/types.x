@@ -15,6 +15,7 @@
 (import x/reader/indent)
 (def %indent-scan-ref (prim-ref 'indent 'scan))
 (import x/type/str)
+(import x/sys/gc)
 ; Fetch the type prims from the catalog (ns `type` is de-registered, R5).
 ; Fetch the char/int casts from the catalog (ns `char`/`int` utility members de-registered, R5).
 
@@ -356,7 +357,14 @@
             (if (or (eq? name %int-name) (eq? name %float-name))
               (pair (first al) (self (rest al)))
               (self (rest al)))))))
-    (%set-first! %cell (%logo-type-keep (first %cell)))
+    ; The kept list is built on THIS heap and filed in the base's own cell,
+    ; which this heap's collector never walks, so it is pinned or the next
+    ; collect frees it under the base.  The image writer's child collects
+    ; after every included file; a read in the base then walked a freed
+    ; type alist.
+    (def kept (%logo-type-keep (first %cell)))
+    (Heap pin! kept)
+    (%set-first! %cell kept)
 
     ; The states, each made before the one that hands to it, since a form
     ; names another state as a free variable bound at make.

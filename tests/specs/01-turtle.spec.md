@@ -190,6 +190,20 @@
 ---
     100
 
+### tokenizes after two collects
+
+The base's type list is built on this heap and filed where its collector
+does not look; the image writer's child collects after every file it loads.
+
+```scheme
+(Heap collect)
+(Heap collect)
+(def toks (Tok read-str (Logo base) "fd 100 "))
+(list (logo-word (first toks)) (first (rest toks)))
+```
+---
+    ("fd" 100)
+
 ### tokenizes brackets into block
 
 ```scheme
