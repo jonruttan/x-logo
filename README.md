@@ -1,18 +1,30 @@
-# x-logo — Logo turtle graphics for x-lang
+# x-logo — Logo on x-lang
 
 <p align="center"><img src="docs/bitwise-banner.svg" alt="x-logo, with Bitwise the owl" width="100%"></p>
 
 A Logo interpreter written in [x-lang](https://github.com/jonruttan/x-lang), with a
-live browser viewer — roughly
-2,400 lines implementing a second surface language, complete with its own
-tokenizer types, an infix expression parser, an HTTP server and an animated
-SVG turtle. It is the worked demonstration of the claim that whole surface
-languages load on top of a dialect.
+live browser viewer: its own tokenizer types, an infix expression parser, an
+HTTP server and an animated SVG turtle.
 
-It lived in x-lang's `apps/logo/` until it became a bundle. Nothing about the
-language changed in the move; what changed is that it is now acquired,
-pinned, and tested against a matrix of platform releases like every other
-lang — see [The Lang Contract](https://github.com/jonruttan/x-lang/blob/main/docs/lang-contract.md).
+```
+$ x -l logo
+? REPEAT 4 [ FD 100 RT 90 ]
+```
+
+The square appears in the browser, at the address the session prints.
+
+x-logo is a **lang**: a surface language loaded over an x-lang dialect. The
+terms are in x-lang's
+[lang contract](https://github.com/jonruttan/x-lang/blob/main/docs/lang-contract.md).
+
+## Status
+
+Paired with x-lang v0.45.0, the release `lang.xon` declares. The spec suite
+is green; one terminal test, `t03-cancel-empty-prompt`, is a recorded
+failure in `tests/tty/known-fail.txt`.
+
+This README describes `main`. `releases/latest` installs v0.1.0, which is
+older and pairs with an earlier x-lang release.
 
 ## Install
 
@@ -64,11 +76,9 @@ described under [File Loading](#file-loading).
 
 ## Requirements
 
-**x-lang v0.45.0 or later**, declared in [`lang.xon`](lang.xon) and enforced by
-the release pairing rather than by hope. The floor has teeth: this bundle
-fetches the platform's type handles through `(Type named ...)`, and that door
-does not exist in earlier platforms — against one, the bundle raises at load
-rather than degrading.
+**x-lang v0.45.0**, declared in [`lang.xon`](lang.xon). That release is the
+first where `Socket tcp-listen` takes a list of candidate ports, which the
+viewer binds through.
 
 **radon**, and that is read off the imports rather than chosen: `x/sys/socket`
 serves the viewer, `x/sys/file` backs the bytecode stream and `LOAD`, and
@@ -262,21 +272,8 @@ The viewer at the address the REPL prints (`http://localhost:8080` unless that p
 
 The viewer receives a bytecode stream from the REPL. Each turtle command emits compact opcodes (`F`, `R`, `L`, `U`, `D`, `K`, `W`, etc.) that the browser interprets and renders as SVG.
 
-### Static Embedding
-
-For blog posts, embed bytecodes directly:
-
-```html
-<script>
-window.TURTLE_BC = ["F",100,"R",90,"F",100,"R",90,"F",100,"R",90,"F",100,"R",90];
-</script>
-<script src="turtle-player.js"></script>
-```
-
-> **Note:** `turtle-player.js` is not shipped in this repository — the
-> standalone player was never split out of `viewer.html`. Until it is, static
-> embedding means extracting the `parseBytecode`/render logic from
-> `viewer.html` by hand.
+There is no standalone player: the bytecode reader and the renderer are
+part of `logo/viewer.html`.
 
 ## Architecture
 
@@ -312,31 +309,28 @@ tests/tty/               expect scripts, for what only a terminal shows
 tools/check/             the release-refs gate, sourced from x-lang's lang kit
 ```
 
-No file here carries a path literal, `run.x` included — x.sh boots the dialect
-`lang.xon` declares and arms this root *before* `run.x` is read, so nothing
-needs one. That is what the extraction from `apps/logo/` was mostly about: an
-in-tree app may self-boot and address the tree around it, and a bundle may do
-neither.
+No file here carries a path literal, `run.x` included: x.sh boots the dialect
+`lang.xon` declares and arms this root before `run.x` is read.
 
 ### Source files
 
-| File | Lines | Description |
-|------|------:|-------------|
-| `logo/dispatch.x` | 480 | Command dispatcher and control flow |
-| `logo/types.x` | 405 | Logo tokenizer types |
-| `logo/entry.x` | 257 | Line entry: brackets, cancellation, EOF |
-| `logo/expr.x` | 193 | Expression parser (infix to values) |
-| `logo/serve.x` | 183 | HTTP server for the browser viewer |
-| `logo/repl.x` | 150 | Interactive REPL |
-| `logo/tstate.x` | 128 | Extended turtle commands |
-| `logo/state.x` | 126 | Turtle state and bytecode emission |
-| `logo/indent.x` | 73 | Indentation preprocessor |
-| `logo/math.x` | 66 | Math functions and LFSR random |
-| `logo/main.x` | 59 | Server setup, hooks, fork |
-| `run.x` | 48 | The entry `lang.xon` names |
-| `logo/json.x` | 39 | Bytecode JSON output |
-| `logo/turtle.x` | 38 | Turtle command surface |
-| `logo/viewer.html` | 489 | Browser viewer and animation |
+| File | Description |
+|------|-------------|
+| `logo/dispatch.x` | Command dispatcher and control flow |
+| `logo/types.x` | Logo tokenizer types |
+| `logo/entry.x` | Line entry: brackets, cancellation, EOF |
+| `logo/expr.x` | Expression parser (infix to values) |
+| `logo/serve.x` | HTTP server for the browser viewer |
+| `logo/repl.x` | Interactive REPL |
+| `logo/tstate.x` | Extended turtle commands |
+| `logo/state.x` | Turtle state and bytecode emission |
+| `logo/indent.x` | Indentation preprocessor |
+| `logo/math.x` | Math functions and LFSR random |
+| `logo/main.x` | Server setup, hooks, fork |
+| `run.x` | The entry `lang.xon` names |
+| `logo/json.x` | Bytecode JSON output |
+| `logo/turtle.x` | Turtle command surface |
+| `logo/viewer.html` | Browser viewer and animation |
 
 ## Testing
 
@@ -344,9 +338,10 @@ neither.
 make test        # the turtle specs
 make examples    # every example, against its pinned output
 make tty         # the interactive contract (needs expect(1))
+make lint        # the platform's linter over the bundle's sources
 ```
 
-All three take `X=` to name a particular x — `X=../x-lang/x.sh make test` runs
+Each takes `X=` to name a particular x — `X=../x-lang/x.sh make test` runs
 against a checkout instead of the installed platform, which is what you want
 when the change under test is in the platform.
 
@@ -356,18 +351,16 @@ server. The examples run whole Logo programs end to end, which is the only
 thing that exercises the indentation preprocessor, the tokenizer, the infix
 parser and the batch launcher together. The tty tests drive a real pty,
 because ctrl-c cancellation, the exit paths and the execute-once ruling are
-`isatty`-guarded and therefore invisible to both of the others — they shipped
-broken once for exactly that reason.
+`isatty`-guarded and therefore invisible to both of the others.
 
 **The spec suite is heavy.** The turtle kernel's resident heap runs 5–7 GB,
 which is what its `@weight 7` row is for. Run it on a quiet machine: two of
 these at once is a swapping machine, and a swapping machine reports failures
 that are not there.
 
-**There is no `known-failures.txt`, and that is a claim rather than an
-omission.** The suite is green. A bundle carrying documented debt needs a
-ratchet so the debt cannot grow quietly; a bundle with none wants the runner's
-own verdict, so that the first new failure is red on the day it lands.
+The spec suite has no known-failures list: it is green, and any failure is
+red. The tty suite has one, `tests/tty/known-fail.txt`, which names
+`t03-cancel-empty-prompt`.
 
 ## Background
 
