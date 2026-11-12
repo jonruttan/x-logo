@@ -23,9 +23,6 @@ Paired with x-lang v0.45.0, the release `lang.xon` declares. The spec suite
 is green; one terminal test, `t03-cancel-empty-prompt`, is a recorded
 failure in `tests/tty/known-fail.txt`.
 
-This README describes `main`. `releases/latest` installs v0.1.0, which is
-older and pairs with an earlier x-lang release.
-
 ## Install
 
 ```sh
