@@ -19,7 +19,7 @@ terms are in x-lang's
 
 ## Status
 
-Paired with x-lang v0.45.0, the release `lang.xon` declares. The spec suite
+Paired with x-lang v0.53.0, the release `lang.xon` declares. The spec suite
 is green; one terminal test, `t03-cancel-empty-prompt`, is a recorded
 failure in `tests/tty/known-fail.txt`.
 
@@ -73,7 +73,7 @@ described under [File Loading](#file-loading).
 
 ## Requirements
 
-**x-lang v0.45.0**, declared in [`lang.xon`](lang.xon). That release is the
+**x-lang v0.53.0**, declared in [`lang.xon`](lang.xon). That release is the
 first where `Socket tcp-listen` takes a list of candidate ports, which the
 viewer binds through.
 
