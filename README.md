@@ -327,6 +327,7 @@ No file here carries a path literal, `run.x` included: x.sh boots the dialect
 | `run.x` | The entry `lang.xon` names |
 | `logo/json.x` | Bytecode JSON output |
 | `logo/turtle.x` | Turtle command surface |
+| `logo/syntax.x` | The Logo highlighting grammar x/tool/syntax colours with |
 | `logo/viewer.html` | Browser viewer and animation |
 
 ## Testing

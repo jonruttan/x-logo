@@ -37,3 +37,7 @@
 (requires-release "v0.45.0")
 
 (entry "run.x")
+
+; The Logo grammar, for any process that colours a file: logo/syntax
+; imports x-lang libraries only.
+(grammar logo (module logo/syntax) (files ".logo" ".lg") (interpreters "logo"))
