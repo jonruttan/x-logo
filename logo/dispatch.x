@@ -444,8 +444,8 @@
                 ()))
             (Logo vars saved-vars)
             result))
-        (Logo commands
-          (pair (list name n-params proc) (Logo commands)))
+        (Logo procedures
+          (pair (list name n-params proc) (Logo procedures)))
         (logo-process-tokens remaining)))))
 
 (provide logo/dispatch
