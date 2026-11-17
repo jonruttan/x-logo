@@ -56,10 +56,14 @@
     (op-type () "The reader type of an operator")
     (string-type () "The reader type of a string")
     (vars () "Variables, (NAME . value), the innermost binding first")
-    (commands () "Commands, (NAME ARITY HANDLER); an arity of -1 is a special form")
+    (commands () "The built-in commands, (NAME ARITY HANDLER); an arity of -1 is a special form")
+    (procedures () "The procedures TO defines, (NAME ARITY HANDLER), the latest first")
     (functions () "Functions an expression can call, (NAME ARITY HANDLER), or (NAME HANDLER) for one that takes no arguments")
 
-    (method command (self word) (%logo-alist-find word (self commands)))
+    ; A procedure first, so one TO defines over a built-in's name is the one called
+    (method command (self word)
+      (let ((p (%logo-alist-find word (self procedures))))
+        (if (null? p) (%logo-alist-find word (self commands)) p)))
     (method function (self name) (%logo-alist-find name (self functions)))
 
     ; Rebinds NAME where it is bound, innermost first, else binds it outermost.
