@@ -113,7 +113,12 @@ known_fail() {
 PIDFILE=$(mktemp "${TMPDIR:-/tmp}/logo-tty-pids.XXXXXX") || exit 1
 LOGO_TTY_PIDFILE="$PIDFILE"
 export LOGO_TTY_PIDFILE
-trap 'rm -f "$PIDFILE"' EXIT
+# Each test's output, kept until the next test starts.  It is printed under a
+# FAIL line, indented and without the pty's carriage returns, since expect's
+# transcript is the only record of what the session said; a passing or
+# known-failing test prints nothing from it.
+OUTFILE=$(mktemp "${TMPDIR:-/tmp}/logo-tty-out.XXXXXX") || exit 1
+trap 'rm -f "$PIDFILE" "$OUTFILE"' EXIT
 
 sweep() {
 	[ -s "$PIDFILE" ] || return 0
@@ -143,8 +148,8 @@ for t in tests/tty/t*.exp tests/tty/t*.sh; do
 	[ -e "$t" ] || continue
 	name=$(basename "$t")
 	case "$t" in
-		*.exp) $TIMEOUT_CMD expect "$t" >/dev/null 2>&1 ;;
-		*.sh)  $TIMEOUT_CMD sh "$t" >/dev/null 2>&1 ;;
+		*.exp) $TIMEOUT_CMD expect "$t" >"$OUTFILE" 2>&1 ;;
+		*.sh)  $TIMEOUT_CMD sh "$t" >"$OUTFILE" 2>&1 ;;
 	esac
 	status=$?
 	sweep
@@ -162,6 +167,7 @@ for t in tests/tty/t*.exp tests/tty/t*.sh; do
 			xfail=$((xfail + 1))
 		else
 			printf "${ANSI_RED}FAIL${ANSI_RESET}  %s\n" "$name"
+			tr -d '\r' < "$OUTFILE" | sed 's/^/      | /'
 			fail=$((fail + 1))
 		fi
 	fi
