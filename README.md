@@ -338,7 +338,11 @@ make test        # the turtle specs
 make examples    # every example, against its pinned output
 make tty         # the interactive contract (needs expect(1))
 make lint        # the platform's linter over the bundle's sources
+make card        # docs/card.md: its format, and every program run
 ```
+
+[docs/card.md](docs/card.md) is the reference page: the commands and forms
+in tables, and programs that are run, each line beside what it prints.
 
 Each takes `X=` to name a particular x — `X=../x-lang/x.sh make test` runs
 against a checkout instead of the installed platform, which is what you want
