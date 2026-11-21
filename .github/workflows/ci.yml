@@ -86,6 +86,26 @@ jobs:
         working-directory: x-logo
         run: X="$GITHUB_WORKSPACE/.x-lang/x.sh" sh tests/examples.sh
 
+      # docs/card.md (x-lang docs/contributing.md, "The card").  The card runs
+      # from the bundle's root and a checkout's wrapper runs only from its own,
+      # so the platform is installed first; X_LANG_DIR is the workspace, which
+      # holds this bundle's checkout.  The check itself is x-lang main's on
+      # both legs: the format is the platform's, and the bundle does not move
+      # its release to follow it.
+      - name: Check out the card check
+        uses: actions/checkout@v4
+        with:
+          repository: jonruttan/x-lang
+          ref: main
+          path: .x-kit
+          sparse-checkout: tools/lang-kit
+      - name: Check the card
+        working-directory: x-logo
+        run: |
+          make -C "$GITHUB_WORKSPACE/.x-lang" install PREFIX="$RUNNER_TEMP/x"
+          X_LANG_DIR="$GITHUB_WORKSPACE" BUNDLE=. X="$RUNNER_TEMP/x/bin/x" \
+            sh "$GITHUB_WORKSPACE/.x-kit/tools/lang-kit/card.sh"
+
   # The platform's linter, over this bundle's sources.  It reads every file as
   # text, including the branches no spec reaches.
   #
