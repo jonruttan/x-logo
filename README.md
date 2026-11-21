@@ -301,6 +301,7 @@ lang.xon                 what this bundle is: name, dialect, release pairing
 run.x                    the entry
 logo/                    the language
 examples/ch1.logo        Turtle Geometry chapter 1, with its .expect
+examples/decimals.logo   decimal literals, with what each line prints
 tests/specs/             the spec suite
 tests/tty/               expect scripts, for what only a terminal shows
 tools/check/             the release-refs gate, sourced from x-lang's lang kit
