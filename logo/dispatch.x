@@ -2,8 +2,8 @@
 (module logo/dispatch)
 (import logo/state as-int)
 (import logo/types
-  block-contents cmd-arity cmd-handler is-block? is-paren? is-string?
-  logo-word logo-word=?)
+  block-contents cmd-arity cmd-handler is-block? is-decimal? is-paren?
+  is-string? logo-word logo-word=?)
 (import logo/expr is-op-str? logo-parse-expr logo-parse-one-expr op-precedence)
 (import logo/indent logo-indent-to-blocks)
 ; Fetch the tokenizer prims from the catalog (ns `buf`/`tok` are de-registered, R5).
@@ -119,6 +119,7 @@
           (match
             ((number? tok) rest-t)
             ((Float float? tok)  rest-t)
+            ((is-decimal? tok) rest-t)
             ((is-string? tok) rest-t)
             ((is-block? tok)  rest-t)
             ((is-paren? tok "(") (%skip-parens rest-t 1))

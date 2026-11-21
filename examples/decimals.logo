@@ -1,0 +1,19 @@
+; Decimal literals: digits, a point, digits.
+PRINT 3.7
+PRINT 1.5 + 1
+PRINT ROUND(3.7)
+PRINT INT(3.9)
+PRINT 0.5 * 4
+X <- 2.25
+PRINT X
+PRINT SQRT(2.25)
+FD 12.5
+PRINT YCOR
+PRINT 37
+PRINT 10.0 / 4
+IF X > 2.2 THEN PRINT "more"
+PRINT -1.5
+PRINT POWER(1.5, 2)
+PRINT 5 - 1.5
+PRINT 2 * -0.5
+PRINT 1.25 + 1.25

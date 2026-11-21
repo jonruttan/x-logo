@@ -55,6 +55,7 @@
     (block-type () "The reader type of a bracketed block")
     (op-type () "The reader type of an operator")
     (string-type () "The reader type of a string")
+    (decimal-type () "The reader type of a decimal literal")
     (vars () "Variables, (NAME . value), the innermost binding first")
     (commands () "The built-in commands, (NAME ARITY HANDLER); an arity of -1 is a special form")
     (procedures () "The procedures TO defines, (NAME ARITY HANDLER), the latest first")
@@ -173,6 +174,29 @@
      (if (= chr 10) (%seq (%buffer-unread buffer) (%score-set score 1 buffer)) me)))
 (def %logo-f-semi-open
   '(fn (me buffer score chr) (if (= chr 59) body ())))
+
+; a decimal: digits, a point, digits.  The integer type the base keeps takes
+; the digits before the point and no more, so without this `3.7` read as 3
+; and the point began something else.  A token of the same bytes that is
+; longer wins, so `37` stays the integer's and `3.7` is this one's; `3.` with
+; no digit after it is no decimal.
+(def %logo-f-dec-frac
+  '(fn (me buffer score chr)
+     (if (and (>= chr 48) (<= chr 57)) me
+       (%seq (%buffer-unread buffer) (%score-set score 1 buffer)))))
+(def %logo-f-dec-point
+  '(fn (me buffer score chr) (if (and (>= chr 48) (<= chr 57)) frac ())))
+(def %logo-f-dec-whole
+  '(fn (me buffer score chr)
+     (if (and (>= chr 48) (<= chr 57)) me (if (= chr 46) point ()))))
+; A sign belongs to the token where the integer type takes one, a `-` with a
+; digit straight after it: `-1.5` is one token as `-1` is, or the integer
+; would take `-1` and leave the point behind.
+(def %logo-f-dec-sign
+  '(fn (me buffer score chr) (if (and (>= chr 48) (<= chr 57)) whole ())))
+(def %logo-f-dec-open
+  '(fn (me buffer score chr)
+     (if (and (>= chr 48) (<= chr 57)) whole (if (= chr 45) sign ()))))
 
 ; the states the last base make realized, and how many the lane compiled
 (def %logo-states ())
@@ -320,6 +344,20 @@
         (fn (_ self)
           (display "\"" (first self) "\""))))))
 
+; LOGO-DECIMAL: 3.7.  The token holds its text, as a word does, and the
+; expression parser makes the float (logo-decimal-val): inside a read the
+; current base is Logo's, where no type reads a float, so (Float from)
+; refuses the text there.
+(def %logo-t-decimal
+  (fn (_ st)
+    (list
+      (pair 'analyse st)
+      (pair 'read
+        (fn (_ . args)
+          (type-make-instance (Logo decimal-type) (buf-tok (first args)))))
+      (pair 'write
+        (fn (_ self) (display (first self)))))))
+
 ; LOGO-SEMI: ; comment to end of line (discard)
 (def %logo-t-semi
   (fn (_ st)
@@ -389,6 +427,12 @@
     (def string-open (%logo-st %logo-f-string-open (list (pair 'body string-body))))
     (def semi-body (%logo-st %logo-f-semi-body ()))
     (def semi-open (%logo-st %logo-f-semi-open (list (pair 'body semi-body))))
+    (def dec-frac (%logo-st %logo-f-dec-frac ()))
+    (def dec-point (%logo-st %logo-f-dec-point (list (pair 'frac dec-frac))))
+    (def dec-whole (%logo-st %logo-f-dec-whole (list (pair 'point dec-point))))
+    (def dec-sign (%logo-st %logo-f-dec-sign (list (pair 'whole dec-whole))))
+    (def dec-open
+      (%logo-st %logo-f-dec-open (list (pair 'whole dec-whole) (pair 'sign dec-sign))))
     (def close-open (%logo-st (%logo-f-byte 93) (list (pair 'accept accept))))
     (def open-open (%logo-st (%logo-f-byte 91) (list (pair 'accept accept))))
     (def nl-open (%logo-st (%logo-f-byte 10) (list (pair 'accept accept))))
@@ -410,6 +454,7 @@
     (Base make-type base "LOGO-PAREN-CLOSE" (%logo-t-paren-close paren-close-open))
     (Logo string-type (Base make-type base "LOGO-STRING" (%logo-t-string string-open)))
     (Base make-type base "LOGO-SEMI" (%logo-t-semi semi-open))
+    (Logo decimal-type (Base make-type base "LOGO-DECIMAL" (%logo-t-decimal dec-open)))
 
     base)))
 
@@ -462,6 +507,16 @@
   (fn (_ tok)
     (first tok)))
 
+(def is-decimal?
+  (fn (_ tok)
+    (type? tok (Logo decimal-type))))
+
+; The float a decimal token names.  Made here, outside the read, where the
+; current base is the platform's and (Float from) reads the text.
+(def logo-decimal-val
+  (fn (_ tok)
+    (Float from (first tok))))
+
 (def is-paren?
   (fn (_ tok str)
     (and (pair? tok)
@@ -511,11 +566,12 @@
               (Logo indent-type ())
               (Logo block-type ())
               (Logo op-type ())
-              (Logo string-type ())))
+              (Logo string-type ())
+              (Logo decimal-type ())))
         %image-transients))
 (set! %image-recache-hooks
   (pair (fn (_) (Logo base (%logo-base-make))) %image-recache-hooks))
 
 (provide logo/types
-  Logo block-contents cmd-arity cmd-handler is-block? is-paren? is-string?
-  logo-string-val logo-truncated logo-word logo-word=? make-indent-block)
+  Logo block-contents cmd-arity cmd-handler is-block? is-decimal? is-paren?
+  is-string? logo-decimal-val logo-string-val logo-truncated logo-word logo-word=? make-indent-block)

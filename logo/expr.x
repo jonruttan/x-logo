@@ -6,8 +6,8 @@
 (module logo/expr)
 (import logo/state as-float)
 (import logo/types
-  cmd-arity cmd-handler is-block? is-paren? is-string? logo-string-val
-  logo-word)
+  cmd-arity cmd-handler is-block? is-decimal? is-paren? is-string?
+  logo-decimal-val logo-string-val logo-word)
 ; Fetch the type prims from the catalog (ns `type` is de-registered, R5).
 (import x/core/doors type?)
 
@@ -108,6 +108,7 @@
         (match
           ((number? tok)        (pair tok rest-t))
           ((Float float? tok)         (pair tok rest-t))
+          ((is-decimal? tok)   (pair (logo-decimal-val tok) rest-t))
           ((is-string? tok)    (pair (logo-string-val tok) rest-t))
           ((is-block? tok)     (pair tok rest-t))
           ((is-paren? tok "(")
