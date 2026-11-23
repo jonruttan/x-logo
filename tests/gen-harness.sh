@@ -52,12 +52,12 @@ fi
 # 2. boot/x-base.x, not a dialect entry. he.x / xe.x / rn.x end by starting a
 #    REPL, which would run underneath the suite. x-base.x is launcher-free.
 #
-# 3. %lang-root is the harness's job here: at the prompt x.sh defines it, but
-#    nothing found this harness, so it says. The specs reach only the turtle
-#    kernel and would pass without it, but it is emitted so the day a spec
-#    touches logo/serve.x the failure is not an unbound symbol.
+# 3. lib/, not the bundle's root, is the import root, as x -l arms it; and
+#    (Bundle root "logo"), which logo/serve.x asks for viewer.html, answers
+#    the directory holding that lib/, so the day a spec touches logo/serve.x
+#    the viewer is found as it is at the prompt.
 #
-# 4. logo/turtle, not run.x. run.x is the entry: it includes main.x, which
+# 4. logo/turtle, not logo/run. logo/run is the entry: it imports logo/main, whose start
 #    forks an HTTP server and binds :8080. Under a spec suite that is a stray
 #    listener and a port collision; turtle.x is the aggregator -- the whole
 #    language, none of the plumbing -- which is what the specs test.
@@ -66,8 +66,7 @@ cat > "$OUT" <<EOF
 ; commit: the two absolute paths below are facts of this machine.
 (def %install-root "$X_ROOT")
 (include "$X_BASE")
-(import-path! "$BUNDLE")
-(def %lang-root "$BUNDLE")
+(import-path! "$BUNDLE/lib")
 (import logo/turtle
   logo-version Turtle Logo logo-repl logo-batch logo-process-tokens
   logo-indent-to-blocks turtle-json turtle-json-str turtle-bc-str)

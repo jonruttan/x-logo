@@ -1,27 +1,27 @@
 # @weight 1
 ## logo/syntax -- the Logo highlighting grammar
 
-The bundle's lang.xon declares a grammar, `logo`, that x/tool/syntax colours
+The bundle's bundle.xon declares a grammar, `logo`, that x/tool/syntax colours
 Logo programs with. Its module, `logo/syntax`, imports x-lang libraries
 only, and registers the grammar as it loads.
 
 The cases share one process, and a registered grammar stays registered, so
-the catalogue's case comes first: it finds the grammar through lang.xon,
+the catalogue's case comes first: it finds the grammar through bundle.xon,
 before anything has imported the module.
 
 ### the catalogue finds logo by suffix, by #! and by modeline
 
 ```scheme
 (do (import x/sys/posix) (import x/sys/file) (import x/tool/syntax)
-    (def root (Str8 replace "/logo/syntax.x" "" (%module-resolve-file "logo/syntax.x")))
+    (def root (Str8 replace "/lib/logo/syntax.x" "" (%module-resolve-file "logo/syntax.x")))
     (def tmp (File temp "/tmp/x-logo-spec-langs-"))
     (File close (first tmp))
     (def d (rest tmp))
     (File unlink d)
     (File mkdir d)
     (File symlink root (Str8 append d "/logo"))
-    (def was (Sys getenv "X_LANG_DIR"))
-    (Sys setenv "X_LANG_DIR" d)
+    (def was (Sys getenv "X_BUNDLE_DIR"))
+    (Sys setenv "X_BUNDLE_DIR" d)
     (Syntax forget!)
     (def row (List find (fn (_ r) (eq? (first r) (lit logo))) (Syntax catalogue)))
     (def grammar-of (fn (_ path . text)
@@ -35,7 +35,7 @@ before anything has imported the module.
             (let ((g (Syntax named (lit logo)))) (list (g files) (g interpreters)))))
     (File unlink (Str8 append d "/logo"))
     (File rmdir d)
-    (Sys setenv "X_LANG_DIR" (if (null? was) "" was))
+    (Sys setenv "X_BUNDLE_DIR" (if (null? was) "" was))
     (Syntax forget!)
     seen)
 ```

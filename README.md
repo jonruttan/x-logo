@@ -19,29 +19,29 @@ terms are in x-lang's
 
 ## Status
 
-Paired with x-lang v0.59.0, the release `lang.xon` declares. The spec suite
+Paired with x-lang v0.61.0, the release `bundle.xon` declares. The spec suite
 is green; one terminal test, `t03-cancel-empty-prompt`, is a recorded
 failure in `tests/tty/known-fail.txt`.
 
 ## Install
 
 ```sh
-x --install-lang https://github.com/jonruttan/x-logo/releases/latest/download/lang.pin.xon
+x --install-bundle https://github.com/jonruttan/x-logo/releases/latest/download/bundle.pin.xon
 x -l logo
 ```
 
 That fetches the published pin, then the tarball it names, digests it, and
-installs to `<install-root>/langs/logo` — the stable name `-l` resolves.
+installs to `<install-root>/bundles/logo` — the stable name `-l` resolves.
 
 **Or pin it, for one project.** An install is unversioned and machine-wide; a
 pin freezes a specific verified tarball for a single build. Put the
-`lang.pin.xon` from a release in your project and `(Pin bundle "deps")`.
+`bundle.pin.xon` from a release in your project and `(Pin bundle "deps")`.
 
 **Or from a clone**, which is what you want while working on it:
 
 ```sh
 make install          # into the x on PATH
-X_LANG_DIR=.. x -l logo    # or skip installing: run the tree in front of you
+X_BUNDLE_DIR=.. x -l logo    # or skip installing: run the tree in front of you
 ```
 
 **Installing writes a boot image.** `make install` ends with
@@ -73,7 +73,7 @@ described under [File Loading](#file-loading).
 
 ## Requirements
 
-**x-lang v0.59.0**, declared in [`lang.xon`](lang.xon). That release is the
+**x-lang v0.61.0**, declared in [`bundle.xon`](bundle.xon). That release is the
 first where `Socket tcp-listen` takes a list of candidate ports, which the
 viewer binds through.
 
@@ -297,39 +297,39 @@ Logo REPL (x-lang)                    Browser (viewer.html)
 ## Layout
 
 ```
-lang.xon                 what this bundle is: name, dialect, release pairing
-run.x                    the entry
-logo/                    the language
+bundle.xon               what this bundle is: name, dialect, release pairing
+lib/logo/run.x           the entry
+lib/logo/                the language
 examples/ch1.logo        Turtle Geometry chapter 1, with its .expect
 examples/decimals.logo   decimal literals, with what each line prints
 tests/specs/             the spec suite
 tests/tty/               expect scripts, for what only a terminal shows
-tools/check/             the release-refs gate, sourced from x-lang's lang kit
+tools/check/             the release-refs gate, sourced from x-lang's bundle kit
 ```
 
-No file here carries a path literal, `run.x` included: x.sh boots the dialect
-`lang.xon` declares and arms this root before `run.x` is read.
+No file here carries a path literal, the entry included: x.sh boots the dialect
+`bundle.xon` declares and arms lib/ before `logo/run` is imported.
 
 ### Source files
 
 | File | Description |
 |------|-------------|
-| `logo/dispatch.x` | Command dispatcher and control flow |
-| `logo/types.x` | Logo tokenizer types |
-| `logo/entry.x` | Line entry: brackets, cancellation, EOF |
-| `logo/expr.x` | Expression parser (infix to values) |
-| `logo/serve.x` | HTTP server for the browser viewer |
-| `logo/repl.x` | Interactive REPL |
-| `logo/tstate.x` | Extended turtle commands |
-| `logo/state.x` | Turtle state and bytecode emission |
-| `logo/indent.x` | Indentation preprocessor |
-| `logo/math.x` | Math functions and LFSR random |
-| `logo/main.x` | Server setup, hooks, fork |
-| `run.x` | The entry `lang.xon` names |
-| `logo/json.x` | Bytecode JSON output |
-| `logo/turtle.x` | Turtle command surface |
-| `logo/syntax.x` | The Logo highlighting grammar x/tool/syntax colours with |
-| `logo/viewer.html` | Browser viewer and animation |
+| `lib/logo/dispatch.x` | Command dispatcher and control flow |
+| `lib/logo/types.x` | Logo tokenizer types |
+| `lib/logo/entry.x` | Line entry: brackets, cancellation, EOF |
+| `lib/logo/expr.x` | Expression parser (infix to values) |
+| `lib/logo/serve.x` | HTTP server for the browser viewer |
+| `lib/logo/repl.x` | Interactive REPL |
+| `lib/logo/tstate.x` | Extended turtle commands |
+| `lib/logo/state.x` | Turtle state and bytecode emission |
+| `lib/logo/indent.x` | Indentation preprocessor |
+| `lib/logo/math.x` | Math functions and LFSR random |
+| `lib/logo/main.x` | Server setup, hooks, fork |
+| `lib/logo/run.x` | The entry `bundle.xon` names |
+| `lib/logo/json.x` | Bytecode JSON output |
+| `lib/logo/turtle.x` | Turtle command surface |
+| `lib/logo/syntax.x` | The Logo highlighting grammar x/tool/syntax colours with |
+| `lib/logo/viewer.html` | Browser viewer and animation |
 
 ## Testing
 

@@ -36,8 +36,8 @@ command -v "$X" >/dev/null 2>&1 || {
 
 # This working tree is the lang under test -- see the same note in
 # tests/tty-runner.sh.
-X_LANG_DIR="$(dirname "$BUNDLE")/"
-export X_LANG_DIR
+X_BUNDLE_DIR="$(dirname "$BUNDLE")/"
+export X_BUNDLE_DIR
 
 # WHERE x MUST BE RUN FROM, which is not always here.  An INSTALLED x works
 # from any directory: its boot entries are amalgams under share/x/boot with

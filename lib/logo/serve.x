@@ -10,22 +10,17 @@
 ;   (turtle-serve (Socket tcp-listen 8080))
 ;   ; Open http://localhost:8080 in browser
 
-; %lang-root is THE BUNDLE'S OWN DIRECTORY, and it comes from the platform:
-; x.sh defines it after it has read lang.xon and found this tree, ahead of
-; run.x.  It is a seam row (x-lang's tools/contract/seam.x, label `bundle`),
-; so it is as much a promise as %repl-prompt or import-path! -- and unlike
-; %install-root it needs no guard, because a bundle cannot be loaded in a tree
-; where it is unbound.
-;
-; The linter reads one file at a time, so a name the boot arrangement provides
-; looks undefined here -- the same reason float.x declares %bigint-base and
-; syscall.x declares %param-os.  Declared, not defined: this file must not be
-; the second place that knows where the bundle lives.
-; lint-known: %lang-root
+; (Bundle root "logo") is THE BUNDLE'S OWN DIRECTORY, the one holding its lib/,
+; and it comes from the platform: x/sys/bundle reads it from the import roots,
+; so it holds in a checkout, an install and a pinned project alike -- and
+; unlike %install-root it points at this bundle's tree, not the platform's.
+; viewer.html sits beside the modules, in lib/logo/, so the lib/ make install
+; copies carries it.
 
 (module logo/serve)
 (import x/sys/posix)
 (import x/sys/file)
+(import x/sys/bundle)
 ; Socket plumbing is homed on the Socket class (#29); this app is its first
 ; consumer, and the Darwin-only constants that lived here moved there and grew
 ; their Linux column.
@@ -139,13 +134,13 @@
   (fn (_ server-fd)
     ; Read the HTML template.
     ;
-    ; This is the one data path in the bundle, and the only reason %lang-root
-    ; has a seam row: every other file here is reached by `import` or a
+    ; This is the one data path in the bundle, and the only reason it asks for
+    ; the bundle's root: every other file here is reached by `import` or a
     ; ./-relative include-once, neither of which means "the bytes of that file".
     ; A cwd-relative literal would find the viewer only when cwd is the tree
     ; root, i.e. not in an installed or pinned bundle.
     (def html-template
-      (%read-or-empty (%path-join %lang-root "logo/viewer.html")))
+      (%read-or-empty (%path-join (Bundle root "logo") "lib/logo/viewer.html")))
     (if (str=? html-template "")
       (Err raise 'io "Could not read turtle.html" ()))
     ; Inject the endpoint script before </body>

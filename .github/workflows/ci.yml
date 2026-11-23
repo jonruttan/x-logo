@@ -1,7 +1,7 @@
 name: CI
 
 # The matrix runs two x-lang refs: the release this bundle declares in
-# lang.xon (requires-release ...) and current main. The pinned leg proves the
+# bundle.xon (requires-release ...) and current main. The pinned leg proves the
 # bundle still runs on the platform it declares; the main leg is an early
 # warning that x-lang has moved underneath it, and is allowed to fail.
 
@@ -16,7 +16,7 @@ on:
     - cron: '0 6 * * 1'
 
 jobs:
-  # The pinned matrix leg is derived from lang.xon, not written here, so there
+  # The pinned matrix leg is derived from bundle.xon, not written here, so there
   # is no second copy to keep in sync.
   prepare:
     runs-on: ubuntu-latest
@@ -26,11 +26,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - id: legs
-        name: Read the declared release from lang.xon
+        name: Read the declared release from bundle.xon
         run: |
-          declared=$(sed -n 's/^(requires-release "\(.*\)")$/\1/p' lang.xon)
+          declared=$(sed -n 's/^(requires-release "\(.*\)")$/\1/p' bundle.xon)
           if [ -z "$declared" ]; then
-            echo "lang.xon declares no (requires-release ...)" >&2
+            echo "bundle.xon declares no (requires-release ...)" >&2
             exit 1
           fi
           echo "declared=$declared" >> "$GITHUB_OUTPUT"
@@ -48,7 +48,7 @@ jobs:
         # Both legs answer different questions: the pinned leg proves this
         # bundle still runs on the platform it declares; the main leg is an
         # early warning that x-lang has moved underneath it, and is allowed to
-        # fail. The pinned row comes from lang.xon.
+        # fail. The pinned row comes from bundle.xon.
         x-lang: ${{ fromJSON(needs.prepare.outputs.legs) }}
 
     steps:
@@ -88,7 +88,7 @@ jobs:
 
       # docs/card.md (x-lang docs/contributing.md, "The card").  The card runs
       # from the bundle's root and a checkout's wrapper runs only from its own,
-      # so the platform is installed first; X_LANG_DIR is the workspace, which
+      # so the platform is installed first; X_BUNDLE_DIR is the workspace, which
       # holds this bundle's checkout.  The check itself is x-lang main's on
       # both legs: the format is the platform's, and the bundle does not move
       # its release to follow it.
@@ -98,19 +98,19 @@ jobs:
           repository: jonruttan/x-lang
           ref: main
           path: .x-kit
-          sparse-checkout: tools/lang-kit
+          sparse-checkout: tools/bundle-kit
       - name: Check the card
         working-directory: x-logo
         run: |
           make -C "$GITHUB_WORKSPACE/.x-lang" install PREFIX="$RUNNER_TEMP/x"
-          X_LANG_DIR="$GITHUB_WORKSPACE" BUNDLE=. X="$RUNNER_TEMP/x/bin/x" \
-            sh "$GITHUB_WORKSPACE/.x-kit/tools/lang-kit/card.sh"
+          X_BUNDLE_DIR="$GITHUB_WORKSPACE" BUNDLE=. X="$RUNNER_TEMP/x/bin/x" \
+            sh "$GITHUB_WORKSPACE/.x-kit/tools/bundle-kit/card.sh"
 
   # The platform's linter, over this bundle's sources.  It reads every file as
   # text, including the branches no spec reaches.
   #
   # Both legs run, on the same split as `specs`.  The pinned leg skips while
-  # the release lang.xon names carries no kit linter: tests/lint.sh says so on
+  # the release bundle.xon names carries no kit linter: tests/lint.sh says so on
   # stderr and exits 0, and the gate goes live when (requires-release ...)
   # moves to an x that ships one.  The main leg is allowed to fail, as an
   # early warning that a rule started firing because the platform moved.
@@ -152,10 +152,10 @@ jobs:
       # Two files defining one global name differently: whichever loads last
       # rewires every caller.  The kit's scanner reads text and needs no
       # build.  An x-lang older than x-lang#1021 does not ship it, so the
-      # declared leg runs it once lang.xon names a release that does.
+      # declared leg runs it once bundle.xon names a release that does.
       - name: One meaning per global name
         run: |
-          kit="$GITHUB_WORKSPACE/.x-lang/tools/lang-kit"
+          kit="$GITHUB_WORKSPACE/.x-lang/tools/bundle-kit"
           if [ -f "$kit/dup-defs.sh" ]; then
             BUNDLE="$GITHUB_WORKSPACE/x-logo" sh "$kit/dup-defs.sh"
           else
@@ -202,8 +202,8 @@ jobs:
         run: X="$GITHUB_WORKSPACE/.x-lang/x.sh" sh tests/tty-runner.sh
 
   relocatable:
-    # Gate: a bundle needs no root-relative path literal, not even in run.x
-    # (x.sh boots the dialect and arms this root before run.x is read). One
+    # Gate: a bundle needs no root-relative path literal, not even in its entry
+    # (x.sh boots the dialect and arms lib/ before logo/run is imported). One
     # would nail the bundle to the directory it was written in, and the
     # symptom only appears once someone moves it.
     name: no path literals at all
@@ -211,21 +211,21 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       # The kit ships with the platform, so this job needs x-lang present -- a
-      # shallow checkout of the release lang.xon declares, not a build. The
-      # check reads lang.xon and greps the tree, so X_LANG_KIT points straight
+      # shallow checkout of the release bundle.xon declares, not a build. The
+      # check reads bundle.xon and greps the tree, so X_BUNDLE_KIT points straight
       # at the kit rather than going through `x --share-dir`.
-      - name: Check out the lang kit
+      - name: Check out the bundle kit
         run: |
-          declared=$(sed -n 's/^(requires-release "\(.*\)")$/\1/p' lang.xon)
+          declared=$(sed -n 's/^(requires-release "\(.*\)")$/\1/p' bundle.xon)
           git clone --depth 1 --branch "$declared" \
             https://github.com/jonruttan/x-lang.git .x-lang
 
       - name: The declared versions are named once
         env:
-          X_LANG_KIT: ${{ github.workspace }}/.x-lang/tools/lang-kit
+          X_BUNDLE_KIT: ${{ github.workspace }}/.x-lang/tools/bundle-kit
         run: sh tools/check/release-refs.sh
 
-      - name: No path literals outside run.x
+      - name: No path literals at all
         run: |
           # Ignore comments -- a file may quote a literal it does not use.
           # Exclude the platform clone: x-lang's own boot files use root-
@@ -235,25 +235,25 @@ jobs:
                  --exclude-dir='.x-lang' . \
                  | grep -Ev ':[0-9]+:[[:space:]]*;' || true)
           if [ -n "$hits" ]; then
-            echo "root-relative include (a bundle needs none, not even in run.x):" >&2
+            echo "root-relative include (a bundle needs none, not even in its entry):" >&2
             echo "$hits" >&2
             exit 1
           fi
 
-      # %lang-root OR NOTHING.  This bundle is the first that ships DATA --
-      # logo/viewer.html, read at runtime and handed to a browser -- and the
+      # (Bundle root "logo") OR NOTHING.  This bundle is the first that ships DATA --
+      # lib/logo/viewer.html, read at runtime and handed to a browser -- and the
       # ways of finding it that LOOK fine in a checkout are the ways that
       # broke it in every installed tree: a bare cwd-relative literal, or a
       # path joined onto %install-root, which points at the PLATFORM's tree
-      # rather than this one.  The seam row exists so there is a right answer;
+      # rather than this one.  Bundle root is there so there is a right answer;
       # this asserts nobody quietly went back to a wrong one.
-      - name: Data paths go through %lang-root
+      - name: Data paths go through Bundle root
         run: |
           hits=$(grep -rn '%install-root' --include='*.x' \
                  --exclude-dir='.x-lang' . \
                  | grep -Ev ':[0-9]+:[[:space:]]*;' || true)
           if [ -n "$hits" ]; then
-            echo "a bundle's data lives under %lang-root, not %install-root:" >&2
+            echo "a bundle's data lives under (Bundle root ...), not %install-root:" >&2
             echo "$hits" >&2
             exit 1
           fi

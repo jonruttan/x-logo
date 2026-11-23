@@ -52,7 +52,7 @@ SPEC_PATH="${SPEC_PATH:-$BUNDLE/tests/specs}"
 
 # The suite boots from a state image of the harness when the platform can write
 # one. tools/dev/image-build.sh images a child that loaded the harness, keyed on
-# what it depends on (the harness, the platform's lib/, its engine, and logo/),
+# what it depends on (the harness, the platform's lib/, its engine, and lib/logo/),
 # so an edit to any of them rewrites the image and a current one is reused.
 #
 # The image writer is a checkout tool: an installed tree has none, and a library
@@ -65,7 +65,7 @@ else
 	_builder="$X_ROOT/tools/dev/image-build.sh"
 	if [ ! -f "$_builder" ]; then
 		echo "x-logo: no image writer at $_builder (not a checkout) -- the suite boots from source" >&2
-	elif X_BIN="$X_BIN" sh "$_builder" "$LANG_LIB" "$BUNDLE/tests/lib/.images" "$BUNDLE/logo"; then
+	elif X_BIN="$X_BIN" sh "$_builder" "$LANG_LIB" "$BUNDLE/tests/lib/.images" "$BUNDLE/lib/logo"; then
 		X_IMG_DIR="$BUNDLE/tests/lib/.images"; export X_IMG_DIR
 	else
 		echo "x-logo: no state image -- the suite boots from source" >&2

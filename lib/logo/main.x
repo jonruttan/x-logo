@@ -9,10 +9,10 @@
 ; This file is boot glue -- its point is its effects, in order: fork the viewer
 ; server, wire the bytecode hooks, arrange for the child to be reaped. It is a
 ; module rather than an include because a bundle entry has no file directory
-; (x.sh cats run.x onto stdin after the dialect), so a ./-relative include-once
+; (x.sh imports logo/run after the dialect), so a ./-relative include-once
 ; would resolve against the user's cwd; `import` is the only addressing that
 ; works, and it needs a (provide ...). Nothing arms a module root here -- x.sh
-; did that from lang.xon before run.x was read.
+; armed the bundle's lib/ from bundle.xon before logo/run was imported.
 (module logo/main)
 (import logo/repl logo-on-exit!)
 (import logo/serve bc-append bc-clear bc-write turtle-serve)
@@ -36,7 +36,7 @@
 ; only the running process can answer -- is this an interactive session? -- and
 ; an import is carried by a state image, so a fork decided here would be decided
 ; once, in the image writer's batch child, and inherited by every later boot.
-; run.x calls this after the boot, where %batch? is the session's own; a source
+; logo/run's main calls this after the boot, where %batch? is the session's own; a source
 ; boot reaches the same call on the same line.
 (def logo-start!
   (fn (_)
@@ -60,7 +60,7 @@
             (let ((pid (Sys fork)))
               (if (= pid 0)
                 ; The child never leaves this arm.  An error that escaped it
-                ; would unwind into run.x, and the child would start a second
+                ; would unwind into logo/run's main, and the child would start a second
                 ; REPL on this terminal (x-lang's Proc keeps the same rule for
                 ; every fork): so every error is caught, reported, and ends the
                 ; child.  Ignore SIGINT in the server child so ctrl-c doesn't
@@ -101,7 +101,7 @@
 (Turtle on-clear bc-clear)
 
 ; RE-EXPORTED, so the entry imports ONE thing.  logo-repl and logo-batch are
-; logo/repl's, reached here through logo/turtle; run.x wants the language and
+; logo/repl's, reached here through logo/turtle; logo/run wants the language and
 ; its plumbing together, and listing them here is what lets it say so in one
 ; line instead of three.
 
