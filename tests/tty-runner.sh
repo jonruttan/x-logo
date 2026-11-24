@@ -46,11 +46,11 @@ if ! command -v expect >/dev/null 2>&1; then
 fi
 
 # This working tree is the lang under test: `x -l logo` searches the installed
-# langs/ by default, so without this the suite would test whatever copy was
-# installed last. X_LANG_DIR is the platform's override, and it wants the
+# bundles/ by default, so without this the suite would test whatever copy was
+# installed last. X_BUNDLE_DIR is the platform's override, and it wants the
 # directory bundles sit in, not the bundle.
-X_LANG_DIR="$(dirname "$BUNDLE")/"
-export X_LANG_DIR X
+X_BUNDLE_DIR="$(dirname "$BUNDLE")/"
+export X_BUNDLE_DIR X
 
 # WHERE x MUST BE RUN FROM, which is not always here.  An INSTALLED x works
 # from any directory: its boot entries are amalgams under share/x/boot with

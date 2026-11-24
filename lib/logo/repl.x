@@ -118,7 +118,7 @@
 ;
 ; x.sh -f cats the program after the entry, so stdin IS the Logo file --
 ; and it is Logo syntax, which the C read-eval loop that resumes after
-; run.x cannot parse.  Slurp stdin to EOF and push it through the same
+; logo/run's main cannot parse.  Slurp stdin to EOF and push it through the same
 ; pipeline as LOAD (dispatch.x): tokenize, indent-to-blocks, process.
 ; The exit hook must run on BOTH paths -- main.x kills the forked viewer
 ; server through %logo-on-exit, and a batch that skips it leaves an

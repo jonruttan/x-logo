@@ -11,6 +11,7 @@
 
 (import x/sys/posix)
 (import x/sys/file)
+(import x/sys/bundle)
 ; Fetch the ptr/ffi prims from the catalog (ns `ptr`/`ffi` are de-registered, R5).
 ; Fetch the char/int casts from the catalog (ns `char`/`int` utility members de-registered, R5).
 

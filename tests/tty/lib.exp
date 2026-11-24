@@ -23,7 +23,7 @@ set stty_init "rows 40 columns 120"
 set timeout [expr {[info exists env(X_TTY_TIMEOUT)] ? $env(X_TTY_TIMEOUT) : 60}]
 
 # THE LANG COMES FROM THE ENVIRONMENT, not from a path.  tty-runner.sh exports
-# X (the x to drive) and X_LANG_DIR (this working tree's parent, so `-l logo`
+# X (the x to drive) and X_BUNDLE_DIR (this working tree's parent, so `-l logo`
 # resolves to the bundle in front of you rather than whichever copy was
 # installed last).  The old in-repo version spawned `sh x.sh -l logo` from the
 # x-lang root; both halves of that dangled the moment Logo left the tree.
@@ -48,7 +48,7 @@ proc spawn_logo_session {} {
     set x [expr {[info exists env(X)] ? $env(X) : "x"}]
     # STAND WHERE x CAN BOOT.  tty-runner.sh works this out once (a checkout's
     # x.sh only recognises repo mode from its own root; an installed one does
-    # not care) and hands it down.  The bundle still comes from X_LANG_DIR,
+    # not care) and hands it down.  The bundle still comes from X_BUNDLE_DIR,
     # which is absolute, so moving does not change which lang is under test.
     if {[info exists env(LOGO_SPAWN_DIR)]} { cd $env(LOGO_SPAWN_DIR) }
     spawn $x -l logo

@@ -7,7 +7,7 @@
 set -u
 BUNDLE="$(cd "$(dirname "$0")/../.." && pwd)"
 
-# X, X_LANG_DIR, LOGO_SPAWN_DIR and LOGO_EXAMPLES are exported by
+# X, X_BUNDLE_DIR, LOGO_SPAWN_DIR and LOGO_EXAMPLES are exported by
 # tests/tty-runner.sh; the defaults keep this file runnable on its own against
 # an installed lang, where cwd does not matter and the bundle is on the path
 # `-l` already searches.
